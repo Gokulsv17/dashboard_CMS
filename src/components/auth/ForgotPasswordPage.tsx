@@ -47,6 +47,22 @@ const ForgotPasswordPage: React.FC = () => {
             We've sent a password reset link to <strong>{email}</strong>. Please check your email and click the verification link to reset your password.
           </p>
           
+          {/* Simulated Email Content - For Testing Only */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h4 className="font-medium text-blue-900 mb-2">📧 Simulated Email Content:</h4>
+            <div className="bg-white rounded p-3 text-sm">
+              <p className="mb-2"><strong>Subject:</strong> Reset Your Password</p>
+              <p className="mb-3">Click the link below to reset your password:</p>
+              <a
+                href="/auth/change-password?token=reset-token-123"
+                className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition duration-200"
+                onClick={() => window.location.href = '/auth/change-password?token=reset-token-123'}
+              >
+                Reset Password
+              </a>
+            </div>
+          </div>
+          
           <div className="space-y-4">
             <p className="text-sm text-gray-500">
               Didn't receive the email? Check your spam folder or try again.

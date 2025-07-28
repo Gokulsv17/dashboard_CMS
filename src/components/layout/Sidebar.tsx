@@ -34,7 +34,7 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col w-64 bg-[#006ADA] h-full text-white">
+    <div className="flex flex-col w-64 bg-[#006ADA] h-full text-white relative">
      {/* Logo */}
 <div className="flex justify-center items-center h-20 border-b border-[#0053b1]">
   <img

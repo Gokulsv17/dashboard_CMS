@@ -47,7 +47,7 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6">
+    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-6">
       {/* Left side - Static Icon + Breadcrumbs */}
       <div className="flex items-center space-x-2">
         <Star className="h-5 w-5 text-blue-600" />
@@ -55,9 +55,9 @@ const Header: React.FC = () => {
       </div>
 
       {/* Right side - Search, Notifications, Profile */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 md:space-x-4">
         {/* Search */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
           </div>
@@ -65,7 +65,7 @@ const Header: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-80 pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+            className="block w-60 lg:w-80 pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
             placeholder="Search content..."
           />
         </div>
@@ -80,7 +80,7 @@ const Header: React.FC = () => {
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition duration-200"
+            className="flex items-center space-x-2 md:space-x-3 p-2 rounded-lg hover:bg-gray-100 transition duration-200"
           >
             <img
               src={
@@ -90,7 +90,7 @@ const Header: React.FC = () => {
               alt={user?.name || 'Profile'}
               className="h-8 w-8 rounded-full object-cover"
             />
-            <ChevronDown className="h-4 w-4 text-gray-400" />
+            <ChevronDown className="h-4 w-4 text-gray-400 hidden sm:block" />
           </button>
 
           {/* Dropdown Menu */}

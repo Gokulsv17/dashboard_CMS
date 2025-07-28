@@ -3,12 +3,24 @@ import { Plus, Filter, Search, Calendar, User, Clock, Edit, Trash2, Eye } from '
 import { Link } from 'react-router-dom';
 import { mockBlogs } from '../../data/mockData';
 import { Blog } from '../../types';
+import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
+import DeleteSuccessModal from '../common/DeleteSuccessModal';
 
 const BlogsPage: React.FC = () => {
   const [blogs] = useState<Blog[]>(mockBlogs);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    blogId: string | null;
+    blogTitle: string;
+  }>({
+    isOpen: false,
+    blogId: null,
+    blogTitle: ''
+  });
+  const [successModal, setSuccessModal] = useState(false);
 
   const filteredBlogs = blogs.filter(blog => {
     const matchesStatus = filterStatus === 'all' || blog.status === filterStatus;
@@ -40,6 +52,39 @@ const BlogsPage: React.FC = () => {
     if (description.length <= maxLength) return description;
     return description.substring(0, maxLength) + '...';
   };
+
+  const handleDeleteClick = (blog: Blog) => {
+    setDeleteModal({
+      isOpen: true,
+      blogId: blog.id,
+      blogTitle: blog.title
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    // TODO: Replace with actual API call
+    // DELETE /api/blogs/${deleteModal.blogId}
+    
+    setDeleteModal({
+      isOpen: false,
+      blogId: null,
+      blogTitle: ''
+    });
+    setSuccessModal(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({
+      isOpen: false,
+      blogId: null,
+      blogTitle: ''
+    });
+  };
+
+  const handleSuccessClose = () => {
+    setSuccessModal(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -168,7 +213,10 @@ const BlogsPage: React.FC = () => {
                       <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200">
+                      <button 
+                        onClick={() => handleDeleteClick(blog)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -190,6 +238,23 @@ const BlogsPage: React.FC = () => {
           <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Are you sure you want to delete?"
+        message={`This will permanently delete "${deleteModal.blogTitle}". This action cannot be undone.`}
+        type="blog"
+      />
+
+      {/* Delete Success Modal */}
+      <DeleteSuccessModal
+        isOpen={successModal}
+        onClose={handleSuccessClose}
+        type="blog"
+      />
     </div>
   );
 };

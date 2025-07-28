@@ -3,11 +3,23 @@ import { Plus, Filter, Search, Calendar, User, Play, Eye, Edit, Trash2 } from 'l
 import { Link } from 'react-router-dom';
 import { mockVideos } from '../../data/mockData';
 import { Video } from '../../types';
+import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
+import DeleteSuccessModal from '../common/DeleteSuccessModal';
 
 const VideosPage: React.FC = () => {
   const [videos] = useState<Video[]>(mockVideos);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    videoId: string | null;
+    videoTitle: string;
+  }>({
+    isOpen: false,
+    videoId: null,
+    videoTitle: ''
+  });
+  const [successModal, setSuccessModal] = useState(false);
 
   const filteredVideos = videos.filter(video => {
     const matchesStatus = filterStatus === 'all' || video.status === filterStatus;
@@ -33,6 +45,38 @@ const VideosPage: React.FC = () => {
       return `${(views / 1000).toFixed(1)}K`;
     }
     return views.toString();
+  };
+
+  const handleDeleteClick = (video: Video) => {
+    setDeleteModal({
+      isOpen: true,
+      videoId: video.id,
+      videoTitle: video.title
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    // TODO: Replace with actual API call
+    // DELETE /api/videos/${deleteModal.videoId}
+    
+    setDeleteModal({
+      isOpen: false,
+      videoId: null,
+      videoTitle: ''
+    });
+    setSuccessModal(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({
+      isOpen: false,
+      videoId: null,
+      videoTitle: ''
+    });
+  };
+
+  const handleSuccessClose = () => {
+    setSuccessModal(false);
   };
 
   return (
@@ -138,7 +182,10 @@ const VideosPage: React.FC = () => {
                       <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200">
+                      <button 
+                        onClick={() => handleDeleteClick(video)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -160,6 +207,23 @@ const VideosPage: React.FC = () => {
           <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Are you sure you want to delete?"
+        message={`This will permanently delete "${deleteModal.videoTitle}". This action cannot be undone.`}
+        type="video"
+      />
+
+      {/* Delete Success Modal */}
+      <DeleteSuccessModal
+        isOpen={successModal}
+        onClose={handleSuccessClose}
+        type="video"
+      />
     </div>
   );
 };

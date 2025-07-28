@@ -35,6 +35,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  isInitializing: boolean;
 }
 
 export interface DashboardStats {

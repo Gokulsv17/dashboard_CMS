@@ -44,7 +44,7 @@ const ForgotPasswordPage: React.FC = () => {
           
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h1>
           <p className="text-gray-600 mb-8">
-            We've sent a password reset link to <strong>{email}</strong>
+            We've sent a password reset link to <strong>{email}</strong>. Please check your email and click the verification link to reset your password.
           </p>
           
           <div className="space-y-4">

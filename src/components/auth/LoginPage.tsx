@@ -103,8 +103,16 @@ const LoginPage: React.FC = () => {
         </form>
 
         <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="text-center mb-4">
+            <Link
+              to="/auth/forgotpassword"
+              className="text-sm text-blue-600 hover:text-blue-700 transition duration-200"
+            >
+              Forgot your password?
+            </Link>
+          </div>
           <p className="text-center text-sm text-gray-500">
-            Demo credentials: admin@doodleblue.com / password123
+            Demo credentials: gokulsvsv@gmail.com / password123
           </p>
         </div>
       </div>

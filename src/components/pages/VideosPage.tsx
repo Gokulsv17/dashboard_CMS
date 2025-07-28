@@ -6,11 +6,14 @@ import { Video } from '../../types';
 import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
 import DeleteSuccessModal from '../common/DeleteSuccessModal';
 import VideoPlayerModal from '../common/VideoPlayerModal';
+import Pagination from '../common/Pagination';
 
 const VideosPage: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>(mockVideos);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     videoId: string | null;
@@ -35,6 +38,18 @@ const VideosPage: React.FC = () => {
                          video.author.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  // Pagination calculations
+  const totalItems = filteredVideos.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedVideos = filteredVideos.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchQuery, itemsPerPage]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -110,6 +125,16 @@ const VideosPage: React.FC = () => {
     updateVideo(video.id, { status: newStatus });
     setVideos([...mockVideos]); // Refresh the videos list
   };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
   return (
     <div className="space-y-4 md:space-y-6 px-4 md:px-0">
       {/* Header Section */}
@@ -183,10 +208,10 @@ const VideosPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredVideos.map((video, index) => (
+              {paginatedVideos.map((video, index) => (
                 <tr key={video.id} className="hover:bg-gray-50 transition duration-200">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {index + 1}
+                    {startIndex + index + 1}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="max-w-xs">
@@ -251,7 +276,7 @@ const VideosPage: React.FC = () => {
 
       {/* Mobile/Tablet Cards */}
       <div className="lg:hidden space-y-4">
-        {filteredVideos.map((video, index) => (
+        {paginatedVideos.map((video, index) => (
           <div key={video.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0 relative">
@@ -281,7 +306,7 @@ const VideosPage: React.FC = () => {
                       <span className="text-xs text-gray-500">{video.duration}</span>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-500 ml-2">#{index + 1}</span>
+                  <span className="text-xs text-gray-500 ml-2">#{startIndex + index + 1}</span>
                 </div>
                 
                 <p className="text-xs md:text-sm text-gray-600 mt-2 line-clamp-2">
@@ -331,7 +356,7 @@ const VideosPage: React.FC = () => {
         ))}
       </div>
       {/* Empty State */}
-      {filteredVideos.length === 0 && (
+      {totalItems === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <Search className="mx-auto h-12 w-12" />
@@ -339,6 +364,18 @@ const VideosPage: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">No videos found</h3>
           <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
         </div>
+      )}
+
+      {/* Pagination */}
+      {totalItems > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+        />
       )}
 
       {/* Delete Confirmation Modal */}

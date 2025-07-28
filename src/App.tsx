@@ -10,6 +10,8 @@ import BlogsPage from './components/pages/BlogsPage';
 import VideosPage from './components/pages/VideosPage';
 import AddBlogPage from './components/pages/AddBlogPage';
 import AddVideoPage from './components/pages/AddVideoPage';
+import EditBlogPage from './components/pages/EditBlogPage';
+import EditVideoPage from './components/pages/EditVideoPage';
 
 function App() {
   return (
@@ -33,8 +35,10 @@ function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="blogs" element={<BlogsPage />} />
             <Route path="blogs/add-project" element={<AddBlogPage />} />
+            <Route path="blogs/edit/:id" element={<EditBlogPage />} />
             <Route path="videos" element={<VideosPage />} />
             <Route path="videos/add-project" element={<AddVideoPage />} />
+            <Route path="videos/edit/:id" element={<EditVideoPage />} />
           </Route>
           
           {/* Catch all route */}

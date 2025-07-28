@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Plus, Filter, Search, Calendar, User, Play, Eye, Edit, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { mockVideos } from '../../data/mockData';
+import { mockVideos, deleteVideo } from '../../data/mockData';
 import { Video } from '../../types';
 import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
 import DeleteSuccessModal from '../common/DeleteSuccessModal';
+import VideoPlayerModal from '../common/VideoPlayerModal';
 
 const VideosPage: React.FC = () => {
-  const [videos] = useState<Video[]>(mockVideos);
+  const [videos, setVideos] = useState<Video[]>(mockVideos);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteModal, setDeleteModal] = useState<{
@@ -20,6 +21,13 @@ const VideosPage: React.FC = () => {
     videoTitle: ''
   });
   const [successModal, setSuccessModal] = useState(false);
+  const [videoPlayerModal, setVideoPlayerModal] = useState<{
+    isOpen: boolean;
+    video: Video | null;
+  }>({
+    isOpen: false,
+    video: null
+  });
 
   const filteredVideos = videos.filter(video => {
     const matchesStatus = filterStatus === 'all' || video.status === filterStatus;
@@ -56,8 +64,12 @@ const VideosPage: React.FC = () => {
   };
 
   const handleDeleteConfirm = () => {
-    // TODO: Replace with actual API call
-    // DELETE /api/videos/${deleteModal.videoId}
+    if (deleteModal.videoId) {
+      const success = deleteVideo(deleteModal.videoId);
+      if (success) {
+        setVideos(mockVideos); // Refresh the videos list
+      }
+    }
     
     setDeleteModal({
       isOpen: false,
@@ -77,6 +89,20 @@ const VideosPage: React.FC = () => {
 
   const handleSuccessClose = () => {
     setSuccessModal(false);
+  };
+
+  const handlePlayVideo = (video: Video) => {
+    setVideoPlayerModal({
+      isOpen: true,
+      video: video
+    });
+  };
+
+  const handleCloseVideoPlayer = () => {
+    setVideoPlayerModal({
+      isOpen: false,
+      video: null
+    });
   };
 
   return (
@@ -166,7 +192,10 @@ const VideosPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center space-x-3">
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200">
+                      <button 
+                        onClick={() => handlePlayVideo(video)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
+                      >
                         <Play className="w-4 h-4" />
                       </button>
                       <button
@@ -180,7 +209,9 @@ const VideosPage: React.FC = () => {
                         <Eye className="w-4 h-4" />
                       </button>
                       <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200">
-                        <Edit className="w-4 h-4" />
+                        <Link to={`/videos/edit/${video.id}`}>
+                          <Edit className="w-4 h-4" />
+                        </Link>
                       </button>
                       <button 
                         onClick={() => handleDeleteClick(video)}
@@ -223,6 +254,13 @@ const VideosPage: React.FC = () => {
         isOpen={successModal}
         onClose={handleSuccessClose}
         type="video"
+      />
+
+      {/* Video Player Modal */}
+      <VideoPlayerModal
+        isOpen={videoPlayerModal.isOpen}
+        onClose={handleCloseVideoPlayer}
+        videoTitle={videoPlayerModal.video?.title || ''}
       />
     </div>
   );

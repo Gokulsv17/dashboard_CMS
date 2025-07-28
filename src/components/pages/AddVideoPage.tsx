@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Play } from 'lucide-react';
+import { addVideo } from '../../data/mockData';
 
 const AddVideoPage: React.FC = () => {
+  const navigate = useNavigate();
   const [videoData, setVideoData] = useState({
     title: '',
     date: '',
@@ -11,6 +13,7 @@ const AddVideoPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -49,7 +52,13 @@ const AddVideoPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsUploading(true);
+    
+    if (!videoData.title || !videoData.date || !videoData.writtenBy || !file) {
+      alert('Please fill in all required fields and upload a video file');
+      return;
+    }
+
+    setIsSubmitting(true);
     setUploadProgress(0);
 
     // Simulate upload progress
@@ -63,9 +72,26 @@ const AddVideoPage: React.FC = () => {
       });
     }, 300);
 
-    // TODO: Replace with actual API call
-    // POST /api/videos
-    // FormData: { title, date, writtenBy, file }
+    // Simulate upload completion
+    setTimeout(() => {
+      // Add the video to our mock data
+      const newVideo = addVideo({
+        title: videoData.title,
+        description: `Video about ${videoData.title}`,
+        author: videoData.writtenBy,
+        uploadedAt: new Date(videoData.date).toISOString(),
+        duration: '15:30', // Default duration
+        views: 0,
+        status: 'published',
+        thumbnail: 'https://images.pexels.com/photos/1181298/pexels-photo-1181298.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop'
+      });
+
+      setIsSubmitting(false);
+      setIsUploading(false);
+      
+      // Navigate back to videos page
+      navigate('/videos');
+    }, 3000);
   };
 
   const cancelUpload = () => {
@@ -180,10 +206,17 @@ const AddVideoPage: React.FC = () => {
           <div className="mt-8">
             <button
               type="submit"
-              disabled={isUploading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-6 rounded-lg transition duration-200"
+              disabled={isUploading || isSubmitting}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center"
             >
-              {isUploading ? 'Uploading...' : 'Submit'}
+              {isSubmitting || isUploading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  {isUploading ? 'Uploading...' : 'Submitting...'}
+                </>
+              ) : (
+                'Submit'
+              )}
             </button>
           </div>
         </div>

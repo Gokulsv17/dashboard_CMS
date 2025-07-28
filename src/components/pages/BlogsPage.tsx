@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Plus, Filter, Search, Calendar, User, Clock, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { mockBlogs } from '../../data/mockData';
+import { mockBlogs, deleteBlog } from '../../data/mockData';
 import { Blog } from '../../types';
 import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
 import DeleteSuccessModal from '../common/DeleteSuccessModal';
 
 const BlogsPage: React.FC = () => {
-  const [blogs] = useState<Blog[]>(mockBlogs);
+  const [blogs, setBlogs] = useState<Blog[]>(mockBlogs);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
@@ -62,8 +62,12 @@ const BlogsPage: React.FC = () => {
   };
 
   const handleDeleteConfirm = () => {
-    // TODO: Replace with actual API call
-    // DELETE /api/blogs/${deleteModal.blogId}
+    if (deleteModal.blogId) {
+      const success = deleteBlog(deleteModal.blogId);
+      if (success) {
+        setBlogs(mockBlogs); // Refresh the blogs list
+      }
+    }
     
     setDeleteModal({
       isOpen: false,
@@ -211,7 +215,9 @@ const BlogsPage: React.FC = () => {
                         <Eye className="w-4 h-4" />
                       </button>
                       <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200">
-                        <Edit className="w-4 h-4" />
+                        <Link to={`/blogs/edit/${blog.id}`}>
+                          <Edit className="w-4 h-4" />
+                        </Link>
                       </button>
                       <button 
                         onClick={() => handleDeleteClick(blog)}

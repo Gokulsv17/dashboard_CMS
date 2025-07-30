@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../../assets/images/Logo_black.svg';
@@ -32,17 +32,17 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 md:p-8">
         <div className="text-center mb-8">
           <img
             src={Logo}
             alt="DoodleBlue Logo"
-            className="mx-auto mb-2 w-38 h-auto"
+            className="mx-auto mb-2 w-32 md:w-38 h-auto"
           />
           <p className="text-gray-600">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Email Address
@@ -52,7 +52,7 @@ const LoginPage: React.FC = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+              className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
               placeholder="Enter your email"
               disabled={isLoading}
             />
@@ -103,8 +103,16 @@ const LoginPage: React.FC = () => {
         </form>
 
         <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="text-center mb-4">
+            <Link
+              to="/auth/forgotpassword"
+              className="text-sm text-blue-600 hover:text-blue-700 transition duration-200"
+            >
+              Forgot your password?
+            </Link>
+          </div>
           <p className="text-center text-sm text-gray-500">
-            Demo credentials: admin@doodleblue.com / password123
+            Demo credentials: gokulsvsv@gmail.com / password123
           </p>
         </div>
       </div>

@@ -1,5 +1,10 @@
 import { Blog, Video, DashboardStats } from '../types';
 
+// In-memory storage for demo purposes
+// In a real app, this would be handled by a state management solution like Redux or Zustand
+let blogIdCounter = 7;
+let videoIdCounter = 4;
+
 // TODO: Replace with actual API calls
 // API Integration Points:
 // 1. GET /api/blogs - Fetch all blogs
@@ -15,7 +20,7 @@ export const mockDashboardStats: DashboardStats = {
   totalUsers: 1247
 };
 
-export const mockBlogs: Blog[] = [
+export let mockBlogs: Blog[] = [
   {
     id: '1',
     title: 'How AI Transformed Fortune 500 Operations: ',
@@ -92,7 +97,7 @@ export const mockBlogs: Blog[] = [
 
 
 
-export const mockVideos: Video[] = [
+export let mockVideos: Video[] = [
   {
     id: '1',
     title: 'Fortune 500 Operations',
@@ -127,3 +132,67 @@ export const mockVideos: Video[] = [
     thumbnail: 'https://images.pexels.com/photos/1181354/pexels-photo-1181354.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop'
   }
 ];
+
+// CRUD operations for blogs
+export const addBlog = (blogData: Omit<Blog, 'id'>) => {
+  const newBlog: Blog = {
+    ...blogData,
+    id: (blogIdCounter++).toString()
+  };
+  mockBlogs.unshift(newBlog);
+  return newBlog;
+};
+
+export const updateBlog = (id: string, blogData: Partial<Blog>) => {
+  const index = mockBlogs.findIndex(blog => blog.id === id);
+  if (index !== -1) {
+    mockBlogs[index] = { ...mockBlogs[index], ...blogData };
+    return mockBlogs[index];
+  }
+  return null;
+};
+
+export const deleteBlog = (id: string) => {
+  const index = mockBlogs.findIndex(blog => blog.id === id);
+  if (index !== -1) {
+    mockBlogs.splice(index, 1);
+    return true;
+  }
+  return false;
+};
+
+export const getBlogById = (id: string) => {
+  return mockBlogs.find(blog => blog.id === id) || null;
+};
+
+// CRUD operations for videos
+export const addVideo = (videoData: Omit<Video, 'id'>) => {
+  const newVideo: Video = {
+    ...videoData,
+    id: (videoIdCounter++).toString()
+  };
+  mockVideos.unshift(newVideo);
+  return newVideo;
+};
+
+export const updateVideo = (id: string, videoData: Partial<Video>) => {
+  const index = mockVideos.findIndex(video => video.id === id);
+  if (index !== -1) {
+    mockVideos[index] = { ...mockVideos[index], ...videoData };
+    return mockVideos[index];
+  }
+  return null;
+};
+
+export const deleteVideo = (id: string) => {
+  const index = mockVideos.findIndex(video => video.id === id);
+  if (index !== -1) {
+    mockVideos.splice(index, 1);
+    return true;
+  }
+  return false;
+};
+
+export const getVideoById = (id: string) => {
+  return mockVideos.find(video => video.id === id) || null;
+};

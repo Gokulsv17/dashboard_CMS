@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify, Undo, Redo } from 'lucide-react';
-import { addBlog } from '../../data/mockData';
+import { getBlogById, updateBlog } from '../../data/mockData';
+import { Blog } from '../../types';
 
-const AddBlogPage: React.FC = () => {
+const EditBlogPage: React.FC = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [blog, setBlog] = useState<Blog | null>(null);
   const [blogData, setBlogData] = useState({
     title: '',
     date: '',
@@ -16,6 +19,26 @@ const AddBlogPage: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      const foundBlog = getBlogById(id);
+      if (foundBlog) {
+        setBlog(foundBlog);
+        setBlogData({
+          title: foundBlog.title,
+          date: foundBlog.publishedAt.split('T')[0],
+          writtenBy: foundBlog.author
+        });
+        setSummary(foundBlog.excerpt);
+        setDescription(foundBlog.description);
+      } else {
+        navigate('/blogs');
+      }
+    }
+    setLoading(false);
+  }, [id, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -76,18 +99,18 @@ const AddBlogPage: React.FC = () => {
 
     // Simulate upload completion
     setTimeout(() => {
-      // Add the blog to our mock data
-      const newBlog = addBlog({
-        title: blogData.title,
-        excerpt: summary,
-        description: description,
-        author: blogData.writtenBy,
-        authorAvatar: 'https://randomuser.me/api/portraits/men/1.jpg', // Default avatar
-        publishedAt: new Date(blogData.date).toISOString(),
-        status: 'published',
-        thumbnail: file ? URL.createObjectURL(file) : 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop',
-        readTime: Math.ceil(description.split(' ').length / 200) // Estimate reading time
-      });
+      if (id) {
+        // Update the blog in our mock data
+        updateBlog(id, {
+          title: blogData.title,
+          excerpt: summary,
+          description: description,
+          author: blogData.writtenBy,
+          publishedAt: new Date(blogData.date).toISOString(),
+          thumbnail: file ? URL.createObjectURL(file) : blog?.thumbnail,
+          readTime: Math.ceil(description.split(' ').length / 200)
+        });
+      }
 
       setIsSubmitting(false);
       setIsUploading(false);
@@ -172,8 +195,27 @@ const AddBlogPage: React.FC = () => {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!blog) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Blog not found</h2>
+        <Link to="/blogs" className="text-blue-600 hover:text-blue-700">
+          Back to Blogs
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4 md:space-y-6 px-2 md:px-0">
+    <div className="space-y-6">
       {/* Back Button */}
       <div className="flex items-center">
         <Link
@@ -185,11 +227,11 @@ const AddBlogPage: React.FC = () => {
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {/* Basic Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Basic Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Edit Blog Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
                 Blog Title
@@ -272,7 +314,19 @@ const AddBlogPage: React.FC = () => {
 
         {/* Upload Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Upload</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Update Image</h2>
+          
+          {/* Current Image */}
+          {blog.thumbnail && !file && (
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-2">Current Image:</p>
+              <img
+                src={blog.thumbnail}
+                alt="Current blog thumbnail"
+                className="w-32 h-20 object-cover rounded-lg border border-gray-200"
+              />
+            </div>
+          )}
           
           {!file ? (
             <div
@@ -281,7 +335,7 @@ const AddBlogPage: React.FC = () => {
               className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-blue-400 transition duration-200"
             >
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg text-gray-600 mb-2">Choose a file or drag & drop it here</p>
+              <p className="text-lg text-gray-600 mb-2">Choose a new file or drag & drop it here</p>
               <p className="text-sm text-gray-500 mb-6">JPEG, PNG formats, up to 5MB</p>
               <label className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg cursor-pointer transition duration-200">
                 <input
@@ -318,10 +372,10 @@ const AddBlogPage: React.FC = () => {
               {isSubmitting || isUploading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  {isUploading ? 'Uploading...' : 'Submitting...'}
+                  {isUploading ? 'Uploading...' : 'Updating...'}
                 </>
               ) : (
-                'Submit'
+                'Update Blog'
               )}
             </button>
           </div>
@@ -337,7 +391,7 @@ const AddBlogPage: React.FC = () => {
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h3 className="font-medium text-gray-900">{blogData.title || 'New Blog'}</h3>
+                    <h3 className="font-medium text-gray-900">{blogData.title || 'Updating Blog'}</h3>
                     <p className="text-sm text-gray-500">
                       {file ? formatFileSize(file.size) : '0 KB'} of {file ? formatFileSize(file.size) : '0 KB'}
                     </p>
@@ -366,4 +420,4 @@ const AddBlogPage: React.FC = () => {
   );
 };
 
-export default AddBlogPage;
+export default EditBlogPage;

@@ -1,25 +1,44 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, X, Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify, Undo, Redo } from 'lucide-react';
-import { addBlog } from '../../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Upload, X, Play } from 'lucide-react';
+import { getVideoById, updateVideo } from '../../data/mockData';
+import { Video } from '../../types';
 
-const AddBlogPage: React.FC = () => {
+const EditVideoPage: React.FC = () => {
   const navigate = useNavigate();
-  const [blogData, setBlogData] = useState({
+  const { id } = useParams<{ id: string }>();
+  const [video, setVideo] = useState<Video | null>(null);
+  const [videoData, setVideoData] = useState({
     title: '',
     date: '',
     writtenBy: ''
   });
-  const [summary, setSummary] = useState('');
-  const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      const foundVideo = getVideoById(id);
+      if (foundVideo) {
+        setVideo(foundVideo);
+        setVideoData({
+          title: foundVideo.title,
+          date: foundVideo.uploadedAt.split('T')[0],
+          writtenBy: foundVideo.author
+        });
+      } else {
+        navigate('/videos');
+      }
+    }
+    setLoading(false);
+  }, [id, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setBlogData(prev => ({
+    setVideoData(prev => ({
       ...prev,
       [name]: value
     }));
@@ -55,7 +74,7 @@ const AddBlogPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!blogData.title || !blogData.date || !blogData.writtenBy || !summary || !description) {
+    if (!videoData.title || !videoData.date || !videoData.writtenBy) {
       alert('Please fill in all required fields');
       return;
     }
@@ -70,31 +89,29 @@ const AddBlogPage: React.FC = () => {
           clearInterval(interval);
           return 100;
         }
-        return prev + 10;
+        return prev + 5; // Slower progress for video uploads
       });
-    }, 200);
+    }, 300);
 
     // Simulate upload completion
     setTimeout(() => {
-      // Add the blog to our mock data
-      const newBlog = addBlog({
-        title: blogData.title,
-        excerpt: summary,
-        description: description,
-        author: blogData.writtenBy,
-        authorAvatar: 'https://randomuser.me/api/portraits/men/1.jpg', // Default avatar
-        publishedAt: new Date(blogData.date).toISOString(),
-        status: 'published',
-        thumbnail: file ? URL.createObjectURL(file) : 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop',
-        readTime: Math.ceil(description.split(' ').length / 200) // Estimate reading time
-      });
+      if (id) {
+        // Update the video in our mock data
+        updateVideo(id, {
+          title: videoData.title,
+          description: `Updated video about ${videoData.title}`,
+          author: videoData.writtenBy,
+          uploadedAt: new Date(videoData.date).toISOString(),
+          thumbnail: file ? URL.createObjectURL(file) : video?.thumbnail
+        });
+      }
 
       setIsSubmitting(false);
       setIsUploading(false);
       
-      // Navigate back to blogs page
-      navigate('/blogs');
-    }, 2000);
+      // Navigate back to videos page
+      navigate('/videos');
+    }, 3000);
   };
 
   const cancelUpload = () => {
@@ -102,106 +119,55 @@ const AddBlogPage: React.FC = () => {
     setUploadProgress(0);
   };
 
-  const EditorToolbar = ({ onAction }: { onAction: (action: string) => void }) => (
-    <div className="flex items-center space-x-2 p-3 border-b border-gray-200 bg-gray-50">
-      <button
-        type="button"
-        onClick={() => onAction('undo')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <Undo className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('redo')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <Redo className="w-4 h-4" />
-      </button>
-      <div className="w-px h-6 bg-gray-300 mx-2"></div>
-      <select className="text-sm border border-gray-300 rounded px-2 py-1">
-        <option>Paragraph</option>
-        <option>Heading 1</option>
-        <option>Heading 2</option>
-        <option>Heading 3</option>
-      </select>
-      <div className="w-px h-6 bg-gray-300 mx-2"></div>
-      <button
-        type="button"
-        onClick={() => onAction('bold')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <Bold className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('italic')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <Italic className="w-4 h-4" />
-      </button>
-      <div className="w-px h-6 bg-gray-300 mx-2"></div>
-      <button
-        type="button"
-        onClick={() => onAction('align-left')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <AlignLeft className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('align-center')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <AlignCenter className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('align-right')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <AlignRight className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('align-justify')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <AlignJustify className="w-4 h-4" />
-      </button>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!video) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Video not found</h2>
+        <Link to="/videos" className="text-blue-600 hover:text-blue-700">
+          Back to Videos
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4 md:space-y-6 px-2 md:px-0">
+    <div className="space-y-6">
       {/* Back Button */}
       <div className="flex items-center">
         <Link
-          to="/blogs"
+          to="/videos"
           className="inline-flex items-center text-gray-600 hover:text-gray-900 transition duration-200"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Blogs
+          Back to Videos
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {/* Basic Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Basic Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Edit Video Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                Blog Title
+                Video Title
               </label>
               <input
                 type="text"
                 id="title"
                 name="title"
-                value={blogData.title}
+                value={videoData.title}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                placeholder="Enter blog title"
+                placeholder="Enter video title"
                 required
               />
             </div>
@@ -213,7 +179,7 @@ const AddBlogPage: React.FC = () => {
                 type="date"
                 id="date"
                 name="date"
-                value={blogData.date}
+                value={videoData.date}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
                 required
@@ -221,58 +187,42 @@ const AddBlogPage: React.FC = () => {
             </div>
             <div>
               <label htmlFor="writtenBy" className="block text-sm font-medium text-gray-700 mb-2">
-                Written By
+                Created By
               </label>
               <input
                 type="text"
                 id="writtenBy"
                 name="writtenBy"
-                value={blogData.writtenBy}
+                value={videoData.writtenBy}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                placeholder="Author name"
+                placeholder="Creator name"
                 required
               />
             </div>
           </div>
         </div>
 
-        {/* Features Section - Summary */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Features</h2>
-            <p className="text-sm text-gray-600 mt-1">Summary Section</p>
-          </div>
-          <EditorToolbar onAction={(action) => console.log('Summary action:', action)} />
-          <div className="p-6">
-            <textarea
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              className="w-full h-32 border-0 resize-none focus:ring-0 focus:outline-none"
-              placeholder="Write your blog summary here..."
-            />
-          </div>
-        </div>
-
-        {/* Description Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Description</h2>
-          </div>
-          <EditorToolbar onAction={(action) => console.log('Description action:', action)} />
-          <div className="p-6">
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full h-48 border-0 resize-none focus:ring-0 focus:outline-none"
-              placeholder="Write your detailed blog description here..."
-            />
-          </div>
-        </div>
-
-        {/* Upload Section */}
+        {/* Upload Video Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Upload</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Update Video</h2>
+          
+          {/* Current Video Thumbnail */}
+          {video.thumbnail && !file && (
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-2">Current Video:</p>
+              <div className="relative w-32 h-20">
+                <img
+                  src={video.thumbnail}
+                  alt="Current video thumbnail"
+                  className="w-full h-full object-cover rounded-lg border border-gray-200"
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Play className="w-6 h-6 text-white bg-black bg-opacity-50 rounded-full p-1" />
+                </div>
+              </div>
+            </div>
+          )}
           
           {!file ? (
             <div
@@ -281,12 +231,12 @@ const AddBlogPage: React.FC = () => {
               className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-blue-400 transition duration-200"
             >
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg text-gray-600 mb-2">Choose a file or drag & drop it here</p>
-              <p className="text-sm text-gray-500 mb-6">JPEG, PNG formats, up to 5MB</p>
+              <p className="text-lg text-gray-600 mb-2">Choose a new video file or drag & drop it here</p>
+              <p className="text-sm text-gray-500 mb-6">MP4, MOV, AVI formats, up to 100MB</p>
               <label className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg cursor-pointer transition duration-200">
                 <input
                   type="file"
-                  accept="image/jpeg,image/png"
+                  accept="video/mp4,video/mov,video/avi"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
@@ -318,10 +268,10 @@ const AddBlogPage: React.FC = () => {
               {isSubmitting || isUploading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  {isUploading ? 'Uploading...' : 'Submitting...'}
+                  {isUploading ? 'Uploading...' : 'Updating...'}
                 </>
               ) : (
-                'Submit'
+                'Update Video'
               )}
             </button>
           </div>
@@ -332,12 +282,12 @@ const AddBlogPage: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-start space-x-4">
               <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                <Upload className="w-8 h-8 text-gray-400" />
+                <Play className="w-8 h-8 text-gray-400" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h3 className="font-medium text-gray-900">{blogData.title || 'New Blog'}</h3>
+                    <h3 className="font-medium text-gray-900">{videoData.title || 'Updating Video'}</h3>
                     <p className="text-sm text-gray-500">
                       {file ? formatFileSize(file.size) : '0 KB'} of {file ? formatFileSize(file.size) : '0 KB'}
                     </p>
@@ -366,4 +316,4 @@ const AddBlogPage: React.FC = () => {
   );
 };
 
-export default AddBlogPage;
+export default EditVideoPage;

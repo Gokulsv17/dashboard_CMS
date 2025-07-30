@@ -10,10 +10,10 @@ const DashboardPage: React.FC = () => {
   const recentVideos = mockVideos.slice(0, 6);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 p-2 md:p-6">
       {/* Blog Management */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between px-6 py-4 bg-blue-50 rounded-t-xl">
+        <div className="flex items-center justify-between px-4 md:px-6 py-4 bg-blue-50 rounded-t-xl">
           <h3 className="text-lg font-semibold text-gray-900">
             Blog Management
           </h3>
@@ -24,11 +24,11 @@ const DashboardPage: React.FC = () => {
             Details &gt;
           </button>
         </div>
-        <div className="p-6 flex flex-wrap gap-4 justify-start">
+        <div className="p-4 md:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
           {recentBlogs.map((blog) => (
             <div
               key={blog.id}
-              className="w-[243px] h-[287px] bg-white border border-gray-100 rounded-xl shadow-sm p-3 flex flex-col"
+              className="w-full max-w-[243px] h-[287px] bg-white border border-gray-100 rounded-xl shadow-sm p-3 flex flex-col mx-auto"
             >
               <img
                 src={blog.thumbnail}
@@ -72,7 +72,7 @@ const DashboardPage: React.FC = () => {
 
       {/* Videos Management */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between px-6 py-4 bg-blue-50 rounded-t-xl">
+        <div className="flex items-center justify-between px-4 md:px-6 py-4 bg-blue-50 rounded-t-xl">
           <h3 className="text-lg font-semibold text-gray-900">
             Videos Management
           </h3>
@@ -83,7 +83,7 @@ const DashboardPage: React.FC = () => {
             Details &gt;
           </button>
         </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-4 md:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {recentVideos.map((video) => (
             <div
               key={video.id}

@@ -1,14 +1,29 @@
 import React, { useState } from 'react';
 import { Plus, Filter, Search, Calendar, User, Clock, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { mockBlogs } from '../../data/mockData';
+import { mockBlogs, deleteBlog, updateBlog } from '../../data/mockData';
 import { Blog } from '../../types';
+import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
+import DeleteSuccessModal from '../common/DeleteSuccessModal';
+import Pagination from '../common/Pagination';
 
 const BlogsPage: React.FC = () => {
-  const [blogs] = useState<Blog[]>(mockBlogs);
+  const [blogs, setBlogs] = useState<Blog[]>(mockBlogs);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    blogId: string | null;
+    blogTitle: string;
+  }>({
+    isOpen: false,
+    blogId: null,
+    blogTitle: ''
+  });
+  const [successModal, setSuccessModal] = useState(false);
 
   const filteredBlogs = blogs.filter(blog => {
     const matchesStatus = filterStatus === 'all' || blog.status === filterStatus;
@@ -16,6 +31,18 @@ const BlogsPage: React.FC = () => {
                          blog.author.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  // Pagination calculations
+  const totalItems = filteredBlogs.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBlogs = filteredBlogs.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchQuery, itemsPerPage]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -40,21 +67,73 @@ const BlogsPage: React.FC = () => {
     if (description.length <= maxLength) return description;
     return description.substring(0, maxLength) + '...';
   };
+
+  const handleDeleteClick = (blog: Blog) => {
+    setDeleteModal({
+      isOpen: true,
+      blogId: blog.id,
+      blogTitle: blog.title
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteModal.blogId) {
+      const success = deleteBlog(deleteModal.blogId);
+      if (success) {
+        setBlogs(mockBlogs); // Refresh the blogs list
+      }
+    }
+    
+    setDeleteModal({
+      isOpen: false,
+      blogId: null,
+      blogTitle: ''
+    });
+    setSuccessModal(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({
+      isOpen: false,
+      blogId: null,
+      blogTitle: ''
+    });
+  };
+
+  const handleSuccessClose = () => {
+    setSuccessModal(false);
+  };
+
+  const togglePublishStatus = (blog: Blog) => {
+    const newStatus = blog.status === 'published' ? 'draft' : 'published';
+    updateBlog(blog.id, { status: newStatus });
+    setBlogs([...mockBlogs]); // Refresh the blogs list
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 px-4 md:px-0">
       {/* Header Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Blog Management</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Blog Management</h1>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Filter by</span>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                className="flex-1 sm:flex-none border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
               >
                 <option value="all">All Status</option>
                 <option value="published">Published</option>
@@ -64,10 +143,11 @@ const BlogsPage: React.FC = () => {
             </div>
             <Link
               to="/blogs/add-project"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200"
+              className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add New Blog
+              <span className="hidden sm:inline">Add New Blog</span>
+              <span className="sm:hidden">Add Blog</span>
             </Link>
           </div>
         </div>
@@ -85,8 +165,8 @@ const BlogsPage: React.FC = () => {
         />
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Desktop Table */}
+      <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -107,15 +187,18 @@ const BlogsPage: React.FC = () => {
                   Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Action
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredBlogs.map((blog, index) => (
+              {paginatedBlogs.map((blog, index) => (
                 <tr key={blog.id} className="hover:bg-gray-50 transition duration-200">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {index + 1}
+                    {startIndex + index + 1}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="max-w-xs">
@@ -153,6 +236,18 @@ const BlogsPage: React.FC = () => {
                       </p>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => togglePublishStatus(blog)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition duration-200 ${
+                        blog.status === 'published'
+                          ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                      }`}
+                    >
+                      {blog.status === 'published' ? 'Unpublish' : 'Publish'}
+                    </button>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center space-x-3">
                       <button
@@ -166,9 +261,14 @@ const BlogsPage: React.FC = () => {
                         <Eye className="w-4 h-4" />
                       </button>
                       <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200">
-                        <Edit className="w-4 h-4" />
+                        <Link to={`/blogs/edit/${blog.id}`}>
+                          <Edit className="w-4 h-4" />
+                        </Link>
                       </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200">
+                      <button 
+                        onClick={() => handleDeleteClick(blog)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -180,8 +280,86 @@ const BlogsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Mobile/Tablet Cards */}
+      <div className="lg:hidden space-y-4">
+        {paginatedBlogs.map((blog, index) => (
+          <div key={blog.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <img
+                  src={blog.thumbnail}
+                  alt={blog.title}
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-sm md:text-base font-medium text-gray-900 line-clamp-2">
+                      {blog.title}
+                    </h3>
+                    <div className="flex items-center mt-1 space-x-2">
+                      <img
+                        src={blog.authorAvatar}
+                        alt={blog.author}
+                        className="w-5 h-5 rounded-full"
+                      />
+                      <span className="text-xs text-gray-500">{blog.author}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500">{formatDate(blog.publishedAt)}</span>
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-500 ml-2">#{startIndex + index + 1}</span>
+                </div>
+                
+                <p className="text-xs md:text-sm text-gray-600 mt-2 line-clamp-2">
+                  {blog.excerpt}
+                </p>
+                
+                <div className="flex items-center justify-between mt-3">
+                  <button
+                    onClick={() => togglePublishStatus(blog)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition duration-200 ${
+                      blog.status === 'published'
+                        ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                    }`}
+                  >
+                    {blog.status === 'published' ? 'Unpublish' : 'Publish'}
+                  </button>
+                  
+                  <div className="flex items-center space-x-2">
+                    <button
+                      className={`p-2 rounded-lg transition duration-200 ${
+                        blog.status === 'published'
+                          ? 'text-green-600 hover:bg-green-50'
+                          : 'text-gray-400 hover:bg-gray-50'
+                      }`}
+                      title={blog.status === 'published' ? 'Published' : 'Not Published'}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <Link 
+                      to={`/blogs/edit/${blog.id}`}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Link>
+                    <button 
+                      onClick={() => handleDeleteClick(blog)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
       {/* Empty State */}
-      {filteredBlogs.length === 0 && (
+      {totalItems === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <Search className="mx-auto h-12 w-12" />
@@ -190,6 +368,35 @@ const BlogsPage: React.FC = () => {
           <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
         </div>
       )}
+
+      {/* Pagination */}
+      {totalItems > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Are you sure you want to delete?"
+        message={`This will permanently delete "${deleteModal.blogTitle}". This action cannot be undone.`}
+        type="blog"
+      />
+
+      {/* Delete Success Modal */}
+      <DeleteSuccessModal
+        isOpen={successModal}
+        onClose={handleSuccessClose}
+        type="blog"
+      />
     </div>
   );
 };

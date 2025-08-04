@@ -58,25 +58,29 @@ class ApiService {
   // Authentication APIs
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      console.log('Making API call to:', `${API_BASE_URL}/auth/login`);
+      console.log('🌐 Making API call to:', `${API_BASE_URL}/auth/login`);
+      console.log('🌐 Request payload:', { email, passwordLength: password.length });
+      
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
 
-      console.log('API Response status:', response.status);
+      console.log('🌐 API Response status:', response.status);
+      console.log('🌐 API Response headers:', Object.fromEntries(response.headers.entries()));
+      
       const data = await response.json();
-      console.log('API Response data:', data);
+      console.log('🌐 API Response data:', data);
       
       if (!response.ok) {
-        console.error('Login API Error:', data);
+        console.error('🌐 Login API Error:', data);
         throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
       }
       
       return data;
     } catch (error) {
-      console.error('Login request failed:', error);
+      console.error('🌐 Login request failed:', error);
       throw error;
     }
   }

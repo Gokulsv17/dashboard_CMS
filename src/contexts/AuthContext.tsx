@@ -99,9 +99,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError('');
 
     try {
-      console.log('Attempting login with:', { email }); // Don't log password
+      console.log('🔐 Attempting login with:', { email });
+      console.log('🔐 Password length:', password.length);
+      console.log('🔐 API URL:', `${API_BASE_URL}/auth/login`);
+      
       const response = await apiService.login(email, password);
-      console.log('Login response:', response);
+      console.log('🔐 Login response:', response);
       
       if (response && response.success && response.data) {
         const userData: User = {
@@ -119,15 +122,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         startSessionTimer();
         setIsLoading(false);
-        console.log('Login successful, user data saved');
+        console.log('🔐 Login successful, user data saved');
         return true;
       } else {
         const errorMessage = response?.message || 'Invalid email or password';
-        console.error('Login failed:', errorMessage);
+        console.error('🔐 Login failed:', errorMessage);
         setError(errorMessage);
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('🔐 Login error:', error);
       let errorMessage = 'Login failed. Please try again.';
       
       // Check if it's a network error or API error

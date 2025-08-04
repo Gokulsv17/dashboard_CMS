@@ -23,6 +23,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [error, setError] = useState('');
   const [sessionTimer, setSessionTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Load user from localStorage on first render
@@ -95,9 +96,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
+    setError('');
 
     try {
+      console.log('Attempting login with:', { email }); // Don't log password
       const response = await apiService.login(email, password);
+      console.log('Login response:', response);
       
       if (response && response.success && response.data) {
         const userData: User = {
@@ -115,16 +119,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         startSessionTimer();
         setIsLoading(false);
+        console.log('Login successful, user data saved');
         return true;
       } else {
-        console.error('Login failed:', response?.message || 'Unknown error');
+        const errorMessage = response?.message || 'Invalid email or password';
+        console.error('Login failed:', errorMessage);
+        setError(errorMessage);
       }
     } catch (error) {
       console.error('Login error:', error);
+      let errorMessage = 'Login failed. Please try again.';
+      
       // Check if it's a network error or API error
       if (error instanceof Error) {
-        console.error('Error message:', error.message);
+        errorMessage = error.message.includes('Invalid') ? 
+          'Invalid email or password' : 
+          'Connection error. Please check your internet connection.';
       }
+      
+      setError(errorMessage);
     }
 
     setIsLoading(false);
@@ -194,7 +207,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     changePassword,
     isLoading,
-    isInitializing
+    isInitializing,
+    error
   };
 
   // Show loading spinner while checking authentication

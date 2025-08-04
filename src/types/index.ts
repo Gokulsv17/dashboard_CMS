@@ -43,6 +43,7 @@ export interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   isLoading: boolean;
   isInitializing: boolean;
+  error: string;
 }
 
 export interface DashboardStats {

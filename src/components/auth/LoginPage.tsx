@@ -8,29 +8,27 @@ const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, error } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
 
     if (!email || !password) {
-      setError('Please fill in all fields');
       return;
     }
 
     try {
+      console.log('Submitting login form...');
       const success = await login(email, password);
+      console.log('Login result:', success);
+      
       if (success) {
+        console.log('Redirecting to dashboard...');
         navigate('/dashboard');
-      } else {
-        setError('Invalid email or password. Please check your credentials.');
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError('Login failed. Please try again.');
     }
   };
 

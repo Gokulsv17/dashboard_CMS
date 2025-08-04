@@ -94,16 +94,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [user]);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, name: string): Promise<boolean> => {
     setIsLoading(true);
     setError('');
 
     try {
-      console.log('🔐 Attempting login with:', { email });
+      console.log('🔐 Attempting login with:', { name, email });
       console.log('🔐 Password length:', password.length);
       console.log('🔐 API URL:', `${API_BASE_URL}/auth/login`);
       
-      const response = await apiService.login(email, password);
+      const response = await apiService.login(email, password, name);
       console.log('🔐 Login response:', response);
       
       if (response && response.success && response.data) {

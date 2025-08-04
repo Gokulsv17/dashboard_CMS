@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { mockBlogs, mockVideos } from "../../data/mockData";
-import { Eye, ArrowUpRight } from "lucide-react";
+import { Eye, ArrowUpRight, User } from "lucide-react";
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -47,11 +47,9 @@ const DashboardPage: React.FC = () => {
               <div className="mt-auto pt-3 border-t border-gray-100">
                 <div className="flex items-center gap-2">
                 {/* Author Avatar */}
-                  <img
-                    src={blog.authorAvatar}
-                    alt={blog.author}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <User className="w-4 h-4 text-blue-600" />
+                  </div>
                  {/* Author Name and Read Time */}
                   <div className="flex flex-col">
                     <span className="text-xs text-gray-600 font-medium">

@@ -5,7 +5,7 @@ import {
   Bell,
   ChevronDown,
   LogOut,
-  User,
+  User as UserIcon,
   Settings,
   Star,
 } from 'lucide-react';
@@ -82,14 +82,9 @@ const Header: React.FC = () => {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center space-x-2 md:space-x-3 p-2 rounded-lg hover:bg-gray-100 transition duration-200"
           >
-            <img
-              src={
-                user?.avatar ||
-                'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop'
-              }
-              alt={user?.name || 'Profile'}
-              className="h-8 w-8 rounded-full object-cover"
-            />
+            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+              <UserIcon className="h-5 w-5 text-blue-600" />
+            </div>
             <ChevronDown className="h-4 w-4 text-gray-400 hidden sm:block" />
           </button>
 
@@ -102,7 +97,7 @@ const Header: React.FC = () => {
               </div>
 
               <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center transition duration-200">
-                <User className="w-4 h-4 mr-3" />
+                <UserIcon className="w-4 h-4 mr-3" />
                 Profile
               </button>
 

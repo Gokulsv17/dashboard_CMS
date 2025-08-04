@@ -210,11 +210,9 @@ const BlogsPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center">
-                      <img
-                        src={blog.authorAvatar}
-                        alt={blog.author}
-                        className="w-8 h-8 rounded-full mr-3"
-                      />
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                        <User className="w-4 h-4 text-blue-600" />
+                      </div>
                       <span>{blog.author}</span>
                     </div>
                   </td>
@@ -299,11 +297,9 @@ const BlogsPage: React.FC = () => {
                       {blog.title}
                     </h3>
                     <div className="flex items-center mt-1 space-x-2">
-                      <img
-                        src={blog.authorAvatar}
-                        alt={blog.author}
-                        className="w-5 h-5 rounded-full"
-                      />
+                      <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
+                        <User className="w-3 h-3 text-blue-600" />
+                      </div>
                       <span className="text-xs text-gray-500">{blog.author}</span>
                       <span className="text-xs text-gray-400">•</span>
                       <span className="text-xs text-gray-500">{formatDate(blog.publishedAt)}</span>

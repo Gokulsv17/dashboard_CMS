@@ -210,9 +210,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('user');
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+      }
       localStorage.setItem('lastActivity', Date.now().toString());
       startSessionTimer();
       setIsLoading(false);
+    }
     setIsInitializing(false);
   }, []);
 

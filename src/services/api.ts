@@ -57,13 +57,25 @@ class ApiService {
 
   // Authentication APIs
   async login(email: string, password: string): Promise<LoginResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
 
-    return this.handleResponse<LoginResponse['data']>(response);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Login API Error:', data);
+        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Login request failed:', error);
+      throw error;
+    }
   }
 
   async register(userData: {

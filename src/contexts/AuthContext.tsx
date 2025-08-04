@@ -99,7 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiService.login(email, password);
       
-      if (response.success && response.data) {
+      if (response && response.success && response.data) {
         const userData: User = {
           id: response.data.user._id,
           email: response.data.user.email,
@@ -116,9 +116,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         startSessionTimer();
         setIsLoading(false);
         return true;
+      } else {
+        console.error('Login failed:', response?.message || 'Unknown error');
       }
     } catch (error) {
       console.error('Login error:', error);
+      // Check if it's a network error or API error
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+      }
     }
 
     setIsLoading(false);

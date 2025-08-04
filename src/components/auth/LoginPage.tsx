@@ -7,7 +7,6 @@ import Logo from '../../assets/images/Logo_black.svg';
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, error } = useAuth();
   const navigate = useNavigate();
@@ -15,13 +14,13 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password || !name) {
+    if (!email || !password) {
       return;
     }
 
     try {
       console.log('Submitting login form...');
-      const success = await login(email, password, name);
+      const success = await login(email, password);
       console.log('Login result:', success);
       
       if (success) {
@@ -46,21 +45,6 @@ const LoginPage: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-              Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-              placeholder="Enter your name"
-              disabled={isLoading}
-            />
-          </div>
-
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Email Address

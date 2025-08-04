@@ -111,7 +111,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           id: response.data.user._id,
           email: response.data.user.email,
           name: response.data.user.name,
-          avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop'
         };
         
         setUser(userData);

@@ -82,7 +82,6 @@ const AddBlogPage: React.FC = () => {
         excerpt: summary,
         description: description,
         author: blogData.writtenBy,
-        authorAvatar: 'https://randomuser.me/api/portraits/men/1.jpg', // Default avatar
         publishedAt: new Date(blogData.date).toISOString(),
         status: 'published',
         thumbnail: file ? URL.createObjectURL(file) : 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop',

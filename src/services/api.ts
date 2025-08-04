@@ -59,12 +59,17 @@ class ApiService {
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
       console.log('🌐 Making API call to:', `${API_BASE_URL}/auth/login`);
-      console.log('🌐 Request payload:', { email, passwordLength: password.length });
+      
+      // Extract name from email (before @ symbol) for backend compatibility
+      const name = email.split('@')[0];
+      const requestData = { name, email, password };
+      
+      console.log('🌐 Request payload:', { name, email, passwordLength: password.length });
       
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(requestData)
       });
 
       console.log('🌐 API Response status:', response.status);

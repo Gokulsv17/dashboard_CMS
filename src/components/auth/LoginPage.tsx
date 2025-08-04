@@ -112,7 +112,7 @@ const LoginPage: React.FC = () => {
             </Link>
           </div>
           <p className="text-center text-sm text-gray-500">
-            Demo credentials: gokulsvsv@gmail.com / password123
+            Use your registered email and password to login
           </p>
         </div>
       </div>

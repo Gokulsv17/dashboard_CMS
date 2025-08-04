@@ -3,6 +3,7 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
+  role?: string;
 }
 
 export interface Blog {
@@ -16,6 +17,8 @@ export interface Blog {
   status: 'published' | 'draft' | 'archived';
   thumbnail?: string;
   readTime: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Video {
@@ -28,6 +31,9 @@ export interface Video {
   views: number;
   status: 'published' | 'draft' | 'processing';
   thumbnail?: string;
+  videoUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthContextType {

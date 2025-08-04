@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, AuthContextType } from '../types';
+import { apiService, LoginResponse } from '../services/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -95,32 +96,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    if (email === 'gokulsvsv@gmail.com' && password === 'password123') {
-      const mockUser: User = {
-        id: '1',
-        email,
-        name: 'Gokul S',
-        avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop'
-      };
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser)); // ✅ Save to localStorage
-      localStorage.setItem('lastActivity', Date.now().toString());
-      startSessionTimer();
-      setIsLoading(false);
-      return true;
+    try {
+      const response = await apiService.login(email, password);
+      
+      if (response.success && response.data) {
+        const userData: User = {
+          id: response.data.user._id,
+          email: response.data.user.email,
+          name: response.data.user.name,
+          avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop'
+        };
+        
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+        localStorage.setItem('lastActivity', Date.now().toString());
+        
+        startSessionTimer();
+        setIsLoading(false);
+        return true;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
     }
 
     setIsLoading(false);
     return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await apiService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    
     setUser(null);
-    localStorage.removeItem('user'); // ✅ Clear localStorage on logout
+    localStorage.removeItem('user');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('lastActivity');
+    
     if (sessionTimer) {
       clearTimeout(sessionTimer);
       setSessionTimer(null);
@@ -128,21 +145,76 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // In a real app, verify current password with backend
-    if (currentPassword === 'password123') {
-      // Update password in localStorage (in real app, this would be on backend)
-      const storedUser = localStorage.getItem('user');
-      if (storedUser && user) {
-        // In real app, password would be updated on server
-        // Here we just simulate success
-        return true;
-      }
+    try {
+      const response = await apiService.changePassword({
+        email: user?.email || '',
+        currentPassword,
+        newPassword
+      });
+      
+      return response.success;
+    } catch (error) {
+      console.error('Change password error:', error);
+      return false;
     }
-    return false;
   };
+
+  // Auto-refresh token when it expires
+  useEffect(() => {
+    const refreshTokenIfNeeded = async () => {
+      const refreshToken = localStorage.getItem('refreshToken');
+      const accessToken = localStorage.getItem('accessToken');
+      
+      if (refreshToken && !accessToken && user) {
+        try {
+          const response = await apiService.refreshToken(refreshToken);
+          if (response.success && response.data) {
+            localStorage.setItem('accessToken', response.data.accessToken);
+            localStorage.setItem('refreshToken', response.data.refreshToken);
+          }
+        } catch (error) {
+          console.error('Token refresh error:', error);
+          logout();
+        }
+      }
+    };
+
+    refreshTokenIfNeeded();
+  }, [user]);
+
+  // Check for existing session on app load
+  useEffect(() => {
+    setIsInitializing(true);
+    const storedUser = localStorage.getItem('user');
+    const accessToken = localStorage.getItem('accessToken');
+    const lastActivity = localStorage.getItem('lastActivity');
+    
+    if (storedUser && accessToken) {
+      try {
+        const userData = JSON.parse(storedUser);
+        const now = Date.now();
+        const lastActivityTime = lastActivity ? parseInt(lastActivity) : now;
+        
+        // Check if session has expired
+        if (now - lastActivityTime > SESSION_TIMEOUT) {
+          localStorage.removeItem('user');
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('lastActivity');
+        } else {
+          setUser(userData);
+          startSessionTimer();
+        }
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      localStorage.setItem('lastActivity', Date.now().toString());
+      startSessionTimer();
+      setIsLoading(false);
+    setIsInitializing(false);
+  }, []);
 
   const value: AuthContextType = {
     user,

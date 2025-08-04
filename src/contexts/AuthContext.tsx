@@ -182,42 +182,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshTokenIfNeeded();
   }, [user]);
 
-  // Check for existing session on app load
-  useEffect(() => {
-    setIsInitializing(true);
-    const storedUser = localStorage.getItem('user');
-    const accessToken = localStorage.getItem('accessToken');
-    const lastActivity = localStorage.getItem('lastActivity');
-    
-    if (storedUser && accessToken) {
-      try {
-        const userData = JSON.parse(storedUser);
-        const now = Date.now();
-        const lastActivityTime = lastActivity ? parseInt(lastActivity) : now;
-        
-        // Check if session has expired
-        if (now - lastActivityTime > SESSION_TIMEOUT) {
-          localStorage.removeItem('user');
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('lastActivity');
-        } else {
-          setUser(userData);
-          startSessionTimer();
-        }
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-      }
-      localStorage.setItem('lastActivity', Date.now().toString());
-      startSessionTimer();
-      setIsLoading(false);
-    }
-    setIsInitializing(false);
-  }, []);
-
   const value: AuthContextType = {
     user,
     login,

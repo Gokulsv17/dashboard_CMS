@@ -27,6 +27,54 @@ interface Blog {
   readTime: number;
   createdAt: string;
   updatedAt: string;
+  templateData?: SelectedTemplate;
+  detailedContentSections?: DetailedContentSection[];
+  subheadingGroups?: SubheadingGroup[];
+}
+```
+
+## Blog Template Data Types
+```typescript
+interface SelectedTemplate {
+  templateId: string;
+  widgets: TemplateWidget[];
+}
+
+interface TemplateWidget {
+  id: string;
+  type: 'header' | 'content-with-sidebar' | 'detailed-content';
+  name: string;
+  preview: string;
+  fields: WidgetField[];
+}
+
+interface WidgetField {
+  id: string;
+  type: 'text' | 'textarea' | 'image' | 'rich-text' | 'list';
+  label: string;
+  placeholder?: string;
+  value: string;
+  formatting?: {
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    alignment?: 'left' | 'center' | 'right' | 'justify';
+  };
+  listItems?: string[];
+}
+
+interface DetailedContentSection {
+  id: string;
+  type: 'main-heading' | 'main-content' | 'subheading-groups' | 'content-image';
+  label: string;
+  order: number;
+  data: any;
+}
+
+interface SubheadingGroup {
+  id: string;
+  subheading: string;
+  content: string;
 }
 ```
 

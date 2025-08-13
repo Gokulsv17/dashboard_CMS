@@ -54,7 +54,9 @@ export interface BlogCreateRequest {
   thumbnail: string;
   thumbnailFile?: File;
   contentBlocks?: ContentBlock[];
-  
+  templateData?: any;
+  detailedContentSections?: any[];
+  subheadingGroups?: any[];
 }
 
 export interface ContentBlock {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, X, Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify, Underline, List, Image, Type, Layout } from 'lucide-react';
+import { ArrowLeft, Upload, X, Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify, Underline, List, Image, Type, Layout, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface TemplateWidget {
@@ -24,6 +24,20 @@ interface WidgetField {
     alignment?: 'left' | 'center' | 'right' | 'justify';
   };
   listItems?: string[];
+}
+
+interface DetailedContentSection {
+  id: string;
+  type: 'main-heading' | 'main-content' | 'subheading-groups' | 'content-image';
+  label: string;
+  order: number;
+  data: any;
+}
+
+interface SubheadingGroup {
+  id: string;
+  subheading: string;
+  content: string;
 }
 
 interface SelectedTemplate {
@@ -50,6 +64,11 @@ const AddBlogPage: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<SelectedTemplate | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [activeWidget, setActiveWidget] = useState<string | null>(null);
+  
+  // Detailed content template states
+  const [detailedContentSections, setDetailedContentSections] = useState<DetailedContentSection[]>([]);
+  const [subheadingGroups, setSubheadingGroups] = useState<SubheadingGroup[]>([]);
+  const [draggedSection, setDraggedSection] = useState<string | null>(null);
 
   // Available templates
   const availableTemplates: TemplateWidget[] = [
@@ -110,47 +129,46 @@ const AddBlogPage: React.FC = () => {
       id: 'detailed-content-template',
       type: 'detailed-content',
       name: 'Detailed Content Template',
-      preview: 'Main Heading + Content + Multiple Subheading Groups + Image',
-      fields: [
-        {
-          id: 'main-heading',
-          type: 'text',
-          label: 'Main Heading',
-          placeholder: 'Enter main heading...',
-          value: '',
-          formatting: { bold: true, alignment: 'left' }
-        },
-        {
-          id: 'main-content',
-          type: 'rich-text',
-          label: 'Main Content',
-          placeholder: 'Enter your main content here...',
-          value: '',
-          formatting: { alignment: 'left' }
-        },
-        {
-          id: 'subheading-groups',
-          type: 'list',
-          label: 'Subheading Groups',
-          value: '',
-          listItems: ['']
-        },
-        {
-          id: 'subheading-contents',
-          type: 'list',
-          label: 'Subheading Contents',
-          value: '',
-          listItems: ['']
-        },
-        {
-          id: 'content-image',
-          type: 'image',
-          label: 'Content Image',
-          value: ''
-        }
-      ]
+      preview: 'Customizable sections with drag & drop ordering',
+      fields: []
     }
   ];
+
+  // Initialize detailed content sections
+  const initializeDetailedContentSections = () => {
+    const defaultSections: DetailedContentSection[] = [
+      {
+        id: 'main-heading-section',
+        type: 'main-heading',
+        label: 'Main Heading',
+        order: 0,
+        data: { value: '', formatting: { bold: true, alignment: 'left' } }
+      },
+      {
+        id: 'main-content-section',
+        type: 'main-content',
+        label: 'Main Content',
+        order: 1,
+        data: { value: '', formatting: { alignment: 'left' } }
+      },
+      {
+        id: 'subheading-groups-section',
+        type: 'subheading-groups',
+        label: 'Subheading Groups',
+        order: 2,
+        data: []
+      },
+      {
+        id: 'content-image-section',
+        type: 'content-image',
+        label: 'Content Image',
+        order: 3,
+        data: { value: '' }
+      }
+    ];
+    setDetailedContentSections(defaultSections);
+    setSubheadingGroups([{ id: '1', subheading: '', content: '' }]);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -188,6 +206,10 @@ const AddBlogPage: React.FC = () => {
   };
 
   const handleTemplateSelect = (template: TemplateWidget) => {
+    if (template.type === 'detailed-content') {
+      initializeDetailedContentSections();
+    }
+    
     const newTemplate: SelectedTemplate = {
       templateId: template.id,
       widgets: [{ ...template, fields: template.fields.map(field => ({ ...field })) }]
@@ -206,11 +228,130 @@ const AddBlogPage: React.FC = () => {
       fields: templateType.fields.map(field => ({ ...field, value: '' }))
     };
     
+    if (templateType.type === 'detailed-content') {
+      initializeDetailedContentSections();
+    }
+    
     setSelectedTemplate({
       ...selectedTemplate,
       widgets: [...selectedTemplate.widgets, newWidget]
     });
     setActiveWidget(newWidget.id);
+  };
+
+  // Drag and drop handlers for sections
+  const handleSectionDragStart = (e: React.DragEvent, sectionId: string) => {
+    setDraggedSection(sectionId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleSectionDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleSectionDrop = (e: React.DragEvent, targetSectionId: string) => {
+    e.preventDefault();
+    
+    if (!draggedSection || draggedSection === targetSectionId) return;
+
+    const draggedIndex = detailedContentSections.findIndex(s => s.id === draggedSection);
+    const targetIndex = detailedContentSections.findIndex(s => s.id === targetSectionId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newSections = [...detailedContentSections];
+    const [draggedItem] = newSections.splice(draggedIndex, 1);
+    newSections.splice(targetIndex, 0, draggedItem);
+
+    // Update order values
+    const updatedSections = newSections.map((section, index) => ({
+      ...section,
+      order: index
+    }));
+
+    setDetailedContentSections(updatedSections);
+    setDraggedSection(null);
+  };
+
+  // Section data handlers
+  const updateSectionData = (sectionId: string, newData: any) => {
+    setDetailedContentSections(prev =>
+      prev.map(section =>
+        section.id === sectionId
+          ? { ...section, data: newData }
+          : section
+      )
+    );
+  };
+
+  // Subheading group handlers
+  const addSubheadingGroup = () => {
+    const newGroup: SubheadingGroup = {
+      id: Date.now().toString(),
+      subheading: '',
+      content: ''
+    };
+    setSubheadingGroups(prev => [...prev, newGroup]);
+  };
+
+  const updateSubheadingGroup = (groupId: string, field: 'subheading' | 'content', value: string) => {
+    setSubheadingGroups(prev =>
+      prev.map(group =>
+        group.id === groupId
+          ? { ...group, [field]: value }
+          : group
+      )
+    );
+  };
+
+  const removeSubheadingGroup = (groupId: string) => {
+    setSubheadingGroups(prev => prev.filter(group => group.id !== groupId));
+  };
+
+  // Add section to detailed content template
+  const addSectionToDetailedContent = (sectionType: 'main-heading' | 'main-content' | 'subheading-groups' | 'content-image') => {
+    const newSection: DetailedContentSection = {
+      id: `${sectionType}-${Date.now()}`,
+      type: sectionType,
+      label: getSectionLabel(sectionType),
+      order: detailedContentSections.length,
+      data: getDefaultSectionData(sectionType)
+    };
+    
+    setDetailedContentSections(prev => [...prev, newSection]);
+  };
+
+  const getSectionLabel = (type: string) => {
+    switch (type) {
+      case 'main-heading': return 'Main Heading';
+      case 'main-content': return 'Main Content';
+      case 'subheading-groups': return 'Subheading Groups';
+      case 'content-image': return 'Content Image';
+      default: return 'Section';
+    }
+  };
+
+  const getDefaultSectionData = (type: string) => {
+    switch (type) {
+      case 'main-heading':
+        return { value: '', formatting: { bold: true, alignment: 'left' } };
+      case 'main-content':
+        return { value: '', formatting: { alignment: 'left' } };
+      case 'subheading-groups':
+        return [];
+      case 'content-image':
+        return { value: '' };
+      default:
+        return {};
+    }
+  };
+
+  const removeSectionFromDetailedContent = (sectionId: string) => {
+    setDetailedContentSections(prev => 
+      prev.filter(section => section.id !== sectionId)
+        .map((section, index) => ({ ...section, order: index }))
+    );
   };
 
   const updateWidgetField = (widgetId: string, fieldId: string, value: string) => {
@@ -338,6 +479,115 @@ const AddBlogPage: React.FC = () => {
     </div>
   );
 
+  const renderDetailedContentSection = (section: DetailedContentSection) => {
+    const fieldStyle = {
+      fontWeight: section.data.formatting?.bold ? 'bold' : 'normal',
+      fontStyle: section.data.formatting?.italic ? 'italic' : 'normal',
+      textDecoration: section.data.formatting?.underline ? 'underline' : 'none',
+      textAlign: section.data.formatting?.alignment || 'left'
+    } as React.CSSProperties;
+
+    switch (section.type) {
+      case 'main-heading':
+        return (
+          <input
+            type="text"
+            value={section.data.value || ''}
+            onChange={(e) => updateSectionData(section.id, { ...section.data, value: e.target.value })}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+            placeholder="Enter main heading..."
+            style={fieldStyle}
+          />
+        );
+      
+      case 'main-content':
+        return (
+          <div className="border border-gray-300 rounded-lg overflow-hidden">
+            <RichTextToolbar widgetId="detailed-content" fieldId={section.id} formatting={section.data.formatting} />
+            <textarea
+              value={section.data.value || ''}
+              onChange={(e) => updateSectionData(section.id, { ...section.data, value: e.target.value })}
+              className="w-full px-4 py-3 border-0 focus:ring-0 focus:outline-none min-h-[200px] resize-none"
+              placeholder="Enter your main content here..."
+              style={fieldStyle}
+            />
+          </div>
+        );
+      
+      case 'subheading-groups':
+        return (
+          <div className="space-y-4">
+            {subheadingGroups.map((group, index) => (
+              <div key={group.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={group.subheading}
+                    onChange={(e) => updateSubheadingGroup(group.id, 'subheading', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                    placeholder={`Subheading ${index + 1}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSubheadingGroup(group.id)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <textarea
+                  value={group.content}
+                  onChange={(e) => updateSubheadingGroup(group.id, 'content', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 min-h-[100px]"
+                  placeholder={`Content for subheading ${index + 1}`}
+                />
+              </div>
+            ))}
+            
+            <button
+              type="button"
+              onClick={addSubheadingGroup}
+              className="inline-flex items-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Subheading Group
+            </button>
+          </div>
+        );
+      
+      case 'content-image':
+        return (
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-600 mb-2">Upload image for this section</p>
+            <label className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg cursor-pointer transition duration-200">
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    updateSectionData(section.id, { ...section.data, value: file.name });
+                  }
+                }}
+                className="hidden"
+              />
+              Choose Image
+            </label>
+            {section.data.value && (
+              <div className="mt-2 text-sm text-gray-600">
+                Selected: {section.data.value}
+              </div>
+            )}
+          </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
   const renderWidgetField = (widget: TemplateWidget, field: WidgetField) => {
     const fieldStyle = {
       fontWeight: field.formatting?.bold ? 'bold' : 'normal',
@@ -412,77 +662,6 @@ const AddBlogPage: React.FC = () => {
         );
       
       case 'list':
-        if (widget.type === 'detailed-content' && field.id === 'subheading-groups') {
-          return (
-            <div className="space-y-4">
-              {field.listItems?.map((item, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={item}
-                      onChange={(e) => {
-                        const newItems = [...(field.listItems || [])];
-                        newItems[index] = e.target.value;
-                        updateListItems(widget.id, field.id, newItems);
-                      }}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                      placeholder={`Subheading ${index + 1}`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newItems = field.listItems?.filter((_, i) => i !== index) || [];
-                        updateListItems(widget.id, field.id, newItems);
-                        const contentField = widget.fields.find(f => f.id === 'subheading-contents');
-                        if (contentField) {
-                          const newContentItems = [...(contentField.listItems || [])];
-                          newContentItems.splice(index, 1);
-                          updateListItems(widget.id, 'subheading-contents', newContentItems);
-                        }
-                      }}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  
-                  <textarea
-                    value={widget.fields.find(f => f.id === 'subheading-contents')?.listItems?.[index] || ''}
-                    onChange={(e) => {
-                      const contentField = widget.fields.find(f => f.id === 'subheading-contents');
-                      if (contentField) {
-                        const newItems = [...(contentField.listItems || [])];
-                        newItems[index] = e.target.value;
-                        updateListItems(widget.id, 'subheading-contents', newItems);
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 min-h-[100px]"
-                    placeholder={`Content for subheading ${index + 1}`}
-                  />
-                </div>
-              ))}
-              
-              <button
-                type="button"
-                onClick={() => {
-                  const newItems = [...(field.listItems || []), ''];
-                  updateListItems(widget.id, field.id, newItems);
-                  const contentField = widget.fields.find(f => f.id === 'subheading-contents');
-                  if (contentField) {
-                    const newContentItems = [...(contentField.listItems || []), ''];
-                    updateListItems(widget.id, 'subheading-contents', newContentItems);
-                  }
-                }}
-                className="inline-flex items-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
-              >
-                <List className="w-4 h-4 mr-2" />
-                Add Subheading Group
-              </button>
-            </div>
-          );
-        }
-        
         return (
           <div className="space-y-2">
             {field.listItems?.map((item, index) => (
@@ -540,22 +719,8 @@ const AddBlogPage: React.FC = () => {
 
     console.log('=== TEMPLATE DATA ===');
     console.log('Selected Template:', selectedTemplate);
-    if (selectedTemplate) {
-      selectedTemplate.widgets.forEach((widget, widgetIndex) => {
-        console.log(`Widget ${widgetIndex + 1} (${widget.name}):`, {
-          id: widget.id,
-          type: widget.type,
-          fields: widget.fields.map(field => ({
-            id: field.id,
-            type: field.type,
-            label: field.label,
-            value: field.value,
-            formatting: field.formatting,
-            listItems: field.listItems
-          }))
-        });
-      });
-    }
+    console.log('Detailed Content Sections:', detailedContentSections);
+    console.log('Subheading Groups:', subheadingGroups);
 
     setIsSubmitting(true);
     setIsUploading(true);
@@ -582,7 +747,9 @@ const AddBlogPage: React.FC = () => {
           status: false,
           thumbnail: '',
           thumbnailFile: file || undefined,
-          templateData: selectedTemplate
+          templateData: selectedTemplate,
+          detailedContentSections: detailedContentSections,
+          subheadingGroups: subheadingGroups
         };
 
         const response = await apiService.createBlog(blogApiData);
@@ -756,21 +923,103 @@ const AddBlogPage: React.FC = () => {
 
                   {activeWidget === widget.id && (
                     <div className="space-y-4">
-                      {widget.fields.map((field) => (
-                        <div key={field.id}>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {field.label}
-                          </label>
-                          {renderWidgetField(widget, field)}
+                      {widget.type === 'detailed-content' ? (
+                        <div className="space-y-6">
+                          {/* Section Management Buttons */}
+                          <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-medium text-gray-700 mr-2">Add Sections:</span>
+                            <button
+                              type="button"
+                              onClick={() => addSectionToDetailedContent('main-heading')}
+                              className="inline-flex items-center px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition duration-200"
+                            >
+                              <Type className="w-3 h-3 mr-1" />
+                              Main Heading
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => addSectionToDetailedContent('main-content')}
+                              className="inline-flex items-center px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium rounded-lg transition duration-200"
+                            >
+                              <Type className="w-3 h-3 mr-1" />
+                              Main Content
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => addSectionToDetailedContent('subheading-groups')}
+                              className="inline-flex items-center px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-medium rounded-lg transition duration-200"
+                            >
+                              <List className="w-3 h-3 mr-1" />
+                              Subheading Groups
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => addSectionToDetailedContent('content-image')}
+                              className="inline-flex items-center px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-700 text-sm font-medium rounded-lg transition duration-200"
+                            >
+                              <Image className="w-3 h-3 mr-1" />
+                              Content Image
+                            </button>
+                          </div>
+
+                          {/* Draggable Sections */}
+                          <div className="space-y-4">
+                            {detailedContentSections
+                              .sort((a, b) => a.order - b.order)
+                              .map((section) => (
+                                <div
+                                  key={section.id}
+                                  draggable
+                                  onDragStart={(e) => handleSectionDragStart(e, section.id)}
+                                  onDragOver={handleSectionDragOver}
+                                  onDrop={(e) => handleSectionDrop(e, section.id)}
+                                  className={`border rounded-lg p-4 transition-all duration-200 cursor-move ${
+                                    draggedSection === section.id 
+                                      ? 'border-blue-400 bg-blue-50 shadow-lg' 
+                                      : 'border-gray-200 hover:border-gray-300'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-2">
+                                      <GripVertical className="w-4 h-4 text-gray-400" />
+                                      <span className="text-sm font-medium text-gray-700">
+                                        {section.label}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSectionFromDetailedContent(section.id)}
+                                      className="p-1 text-red-600 hover:bg-red-50 rounded transition duration-200"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  
+                                  <div>
+                                    {renderDetailedContentSection(section)}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
                         </div>
-                      ))}
+                      ) : (
+                        // Regular template fields
+                        widget.fields.map((field) => (
+                          <div key={field.id}>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              {field.label}
+                            </label>
+                            {renderWidgetField(widget, field)}
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
               ))}
 
               <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-200">
-                <span className="text-sm font-medium text-gray-700">Add more sections:</span>
+                <span className="text-sm font-medium text-gray-700">Add more templates:</span>
                 {availableTemplates.map((template) => (
                   <button
                     key={template.id}

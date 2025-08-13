@@ -106,26 +106,38 @@ const Pagination: React.FC<PaginationProps> = ({
                 <ChevronLeft className="h-5 w-5" />
               </button>
 
-              {totalPages > 0 && getVisiblePages().map((page, index) => (
-                <React.Fragment key={index}>
-                  {page === '...' ? (
-                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                      ...
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => onPageChange(page as number)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === page
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  )}
-                </React.Fragment>
-              ))}
+            {totalPages > 0 && (
+  <>
+    {totalPages === 1 ? (
+      <button
+        className="relative inline-flex items-center px-4 py-2 border text-sm font-medium z-10 bg-blue-50 border-blue-500 text-blue-600"
+      >
+        1
+      </button>
+    ) : (
+      getVisiblePages().map((page, index) => (
+        <React.Fragment key={index}>
+          {page === '...' ? (
+            <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+              ...
+            </span>
+          ) : (
+            <button
+              onClick={() => onPageChange(page as number)}
+              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                currentPage === page
+                  ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              {page}
+            </button>
+          )}
+        </React.Fragment>
+      ))
+    )}
+  </>
+)}
 
               <button
                 onClick={() => onPageChange(currentPage + 1)}

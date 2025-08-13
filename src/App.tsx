@@ -13,6 +13,7 @@ import AddBlogPage from './components/pages/AddBlogPage';
 import AddVideoPage from './components/pages/AddVideoPage';
 import EditBlogPage from './components/pages/EditBlogPage';
 import EditVideoPage from './components/pages/EditVideoPage';
+import ProfilePage from './components/pages/ProfilePage';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
             <Route path="videos" element={<VideosPage />} />
             <Route path="videos/add-project" element={<AddVideoPage />} />
             <Route path="videos/edit/:id" element={<EditVideoPage />} />
+            <Route path="profile" element={<ProfilePage />} />
           </Route>
           
           {/* Catch all route */}

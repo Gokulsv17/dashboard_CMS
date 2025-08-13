@@ -1,14 +1,42 @@
 import React, { useState } from 'react';
-import { Plus, Filter, Search, Calendar, User, Clock, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Filter, Search, Calendar, User, Clock, Edit, Trash2, Eye, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { mockBlogs, deleteBlog, updateBlog } from '../../data/mockData';
+import { apiService } from '../../services/api';
 import { Blog } from '../../types';
 import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
 import DeleteSuccessModal from '../common/DeleteSuccessModal';
+import BlogPreviewModal from '../common/BlogPreviewModal';
 import Pagination from '../common/Pagination';
 
 const BlogsPage: React.FC = () => {
-  const [blogs, setBlogs] = useState<Blog[]>(mockBlogs);
+  
+  const getImageUrl = (thumbnail?: string) => {
+    if (!thumbnail) return 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
+    
+    // If it's already a complete URL, use it
+    if (thumbnail.startsWith('http')) {
+      return thumbnail;
+    }
+    
+    // If it's a full file path, extract just the filename
+    const filename = thumbnail.includes('\\') || thumbnail.includes('/') 
+      ? thumbnail.split(/[\\\/]/).pop() 
+      : thumbnail;
+    
+    // Construct the URL
+    return `http://localhost:5000/uploads/${filename}`;
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.target as HTMLImageElement;
+    console.error('Failed to load image:', target.src);
+    target.src = 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
+  };
+
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,6 +52,13 @@ const BlogsPage: React.FC = () => {
     blogTitle: ''
   });
   const [successModal, setSuccessModal] = useState(false);
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    blog: Blog | null;
+  }>({
+    isOpen: false,
+    blog: null
+  });
 
   const filteredBlogs = blogs.filter(blog => {
     const matchesStatus = filterStatus === 'all' || blog.status === filterStatus;
@@ -43,6 +78,49 @@ const BlogsPage: React.FC = () => {
   React.useEffect(() => {
     setCurrentPage(1);
   }, [filterStatus, searchQuery, itemsPerPage]);
+
+  // Load blogs from API
+  React.useEffect(() => {
+    loadBlogs();
+  }, []);
+
+  const loadBlogs = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await apiService.getBlogs();
+      // console.log("Blogs response:", response);
+      if (response.success && response.data) {
+        // console.log("Blogs data:", response.data[0]._id);
+        // Transform API data to match our Blog interface
+        const transformedBlogs: Blog[] = response.data.map(blog => ({
+          id: blog._id,
+          title: blog.title,
+          excerpt: blog.excerpt,  
+          description: blog.description || '',
+          author: blog.author,
+          authorAvatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+          publishedAt: blog.publishedAt,
+          status: blog.status ? 'published' : 'draft',
+          thumbnail: blog.thumbnail,
+          readTime:blog.description ? Math.ceil(blog.description.split(' ').length / 200): 0, // Assuming average reading speed of 200 words per minute
+          createdAt: blog.createdAt,
+          updatedAt: blog.updatedAt
+        }));
+        setBlogs(transformedBlogs);
+        // console.log("Transformed blogs:", transformedBlogs);
+       
+      } else {
+        setError(response.error || 'Failed to load blogs');
+
+      }
+      
+    } catch (error) {
+      setError('Failed to load blogs');
+      console.error('Error loading blogs:', error);
+    }
+    setLoading(false);
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -78,10 +156,7 @@ const BlogsPage: React.FC = () => {
 
   const handleDeleteConfirm = () => {
     if (deleteModal.blogId) {
-      const success = deleteBlog(deleteModal.blogId);
-      if (success) {
-        setBlogs(mockBlogs); // Refresh the blogs list
-      }
+      deleteBlogFromAPI(deleteModal.blogId);
     }
     
     setDeleteModal({
@@ -90,6 +165,21 @@ const BlogsPage: React.FC = () => {
       blogTitle: ''
     });
     setSuccessModal(true);
+  };
+
+  const deleteBlogFromAPI = async (blogId: string) => {
+    try {
+      const response = await apiService.deleteBlog(blogId);
+      if (response.success) {
+        // Remove blog from local state
+        setBlogs(prevBlogs => prevBlogs.filter(blog => blog.id !== blogId));
+      } else {
+        setError(response.error || 'Failed to delete blog');
+      }
+    } catch (error) {
+      setError('Failed to delete blog');
+      console.error('Error deleting blog:', error);
+    }
   };
 
   const handleDeleteCancel = () => {
@@ -104,10 +194,51 @@ const BlogsPage: React.FC = () => {
     setSuccessModal(false);
   };
 
-  const togglePublishStatus = (blog: Blog) => {
-    const newStatus = blog.status === 'published' ? 'draft' : 'published';
-    updateBlog(blog.id, { status: newStatus });
-    setBlogs([...mockBlogs]); // Refresh the blogs list
+  const handlePreviewClick = (blog: Blog) => {
+    setPreviewModal({
+      isOpen: true,
+      blog: blog
+    });
+  };
+
+  const handleClosePreview = () => {
+    setPreviewModal({
+      isOpen: false,
+      blog: null
+    });
+  };
+
+  const togglePublishStatus = async (blog: Blog) => {
+    setStatusUpdating(blog.id);
+    setError('');
+    
+    try {
+      const newStatus = blog.status === 'published' ? false : true;
+      // console.log(`Updating blog ${blog.id} status to: ${newStatus ? 'published' : 'draft'}`);
+      
+      const response = await apiService.updateBlogStatus(blog.id, newStatus);
+      
+      if (response.success) {
+        // console.log('Status updated successfully in database');
+        // Update local state
+        setBlogs(prevBlogs => 
+          prevBlogs.map(b => 
+            b.id === blog.id 
+              ? { ...b, status: newStatus ? 'published' : 'draft' }
+              : b
+          )
+        );
+        // console.log(`UI updated: Blog ${blog.id} is now ${newStatus ? 'published' : 'draft'}`);
+      } else {
+        console.error('Status update failed:', response.error);
+        setError(response.error || 'Failed to update blog status');
+      }
+    } catch (error) {
+      console.error('Status update error:', error);
+      setError('Failed to update blog status');
+    } finally {
+      setStatusUpdating(null);
+    }
   };
 
   const handlePageChange = (page: number) => {
@@ -119,8 +250,29 @@ const BlogsPage: React.FC = () => {
     setCurrentPage(1);
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 md:space-y-6 px-4 md:px-0">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-600">{error} {blogs.length}</p>
+          <button
+            onClick={loadBlogs}
+            className="mt-2 text-red-600 hover:text-red-700 underline"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
@@ -210,9 +362,11 @@ const BlogsPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                        <User className="w-4 h-4 text-blue-600" />
-                      </div>
+                      <img
+                        src={blog.authorAvatar}
+                        alt={blog.author}
+                        className="w-8 h-8 rounded-full mr-3"
+                      />
                       <span>{blog.author}</span>
                     </div>
                   </td>
@@ -237,17 +391,32 @@ const BlogsPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button
                       onClick={() => togglePublishStatus(blog)}
+                      disabled={statusUpdating === blog.id}
                       className={`px-3 py-1 rounded-full text-xs font-medium transition duration-200 ${
                         blog.status === 'published'
-                          ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                      }`}
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {blog.status === 'published' ? 'Unpublish' : 'Publish'}
+                      {statusUpdating === blog.id ? (
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin mr-1"></div>
+                          Updating...
+                        </div>
+                      ) : (
+                        blog.status === 'published' ? 'Published' : 'Draft'
+                      )}
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => handlePreviewClick(blog)}
+                        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition duration-200"
+                        title="Preview Blog"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
                       <button
                         className={`p-2 rounded-lg transition duration-200 ${
                           blog.status === 'published'
@@ -285,9 +454,10 @@ const BlogsPage: React.FC = () => {
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
                 <img
-                  src={blog.thumbnail}
+                  src={getImageUrl(blog.thumbnail)}
                   alt={blog.title}
                   className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover"
+                  onError={handleImageError}
                 />
               </div>
               <div className="flex-1 min-w-0">
@@ -297,9 +467,11 @@ const BlogsPage: React.FC = () => {
                       {blog.title}
                     </h3>
                     <div className="flex items-center mt-1 space-x-2">
-                      <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
-                        <User className="w-3 h-3 text-blue-600" />
-                      </div>
+                      <img
+                        src={blog.authorAvatar}
+                        alt={blog.author}
+                        className="w-5 h-5 rounded-full"
+                      />
                       <span className="text-xs text-gray-500">{blog.author}</span>
                       <span className="text-xs text-gray-400">•</span>
                       <span className="text-xs text-gray-500">{formatDate(blog.publishedAt)}</span>
@@ -315,16 +487,31 @@ const BlogsPage: React.FC = () => {
                 <div className="flex items-center justify-between mt-3">
                   <button
                     onClick={() => togglePublishStatus(blog)}
+                    disabled={statusUpdating === blog.id}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition duration-200 ${
                       blog.status === 'published'
-                        ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                    }`}
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {blog.status === 'published' ? 'Unpublish' : 'Publish'}
+                    {statusUpdating === blog.id ? (
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin mr-1"></div>
+                        Updating...
+                      </div>
+                    ) : (
+                      blog.status === 'published' ? 'Published' : 'Draft'
+                    )}
                   </button>
                   
                   <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handlePreviewClick(blog)}
+                      className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition duration-200"
+                      title="Preview Blog"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </button>
                     <button
                       className={`p-2 rounded-lg transition duration-200 ${
                         blog.status === 'published'
@@ -392,6 +579,13 @@ const BlogsPage: React.FC = () => {
         isOpen={successModal}
         onClose={handleSuccessClose}
         type="blog"
+      />
+
+      {/* Blog Preview Modal */}
+      <BlogPreviewModal
+        isOpen={previewModal.isOpen}
+        onClose={handleClosePreview}
+        blog={previewModal.blog}
       />
     </div>
   );

@@ -11,7 +11,6 @@ export interface ApiResponse<T = any> {
 
 export interface LoginResponse {
   success: boolean;
-  data: {
     user: {
       _id: string;
       name: string;
@@ -20,7 +19,7 @@ export interface LoginResponse {
     };
     accessToken: string;
     refreshToken: string;
-  };
+  
   message: string;
 }
 
@@ -31,316 +30,389 @@ export interface User {
   role: string;
 }
 
+// Blog API Types
+export interface BlogApiResponse {
+  _id: string;
+  title: string;
+  excerpt: string;
+  description: string;
+  author: string;
+  publishedAt: string;
+  status: boolean;
+  thumbnail: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogCreateRequest {
+  title: string;
+  excerpt: string;
+  description: string;
+  author: string;
+  publishedAt: string;
+  status: boolean;
+  thumbnail: string;
+  thumbnailFile?: File;
+  contentBlocks?: ContentBlock[];
+  
+}
+
+export interface ContentBlock {
+  id: string;
+  type: 'heading' | 'subheading' | 'content' | 'image';
+  value: string;
+  file?: File;
+  order: number;
+}
+
 // API Service Class
 class ApiService {
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('accessToken');
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
-    };
-  }
 
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    try {
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'API request failed');
-      }
-      
-      return data;
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Network error');
+    async login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
+        try{
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return { success: false, error: errorData.message || 'Login failed' };
+            }
+
+            const data: LoginResponse = await response.json();
+            return { success: true, data, message: 'Login successful' };
+        }
+        catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+        }
     }
-  }
 
-  // Authentication APIs
-  async login(email: string, password: string): Promise<LoginResponse> {
+    async logout (): Promise<ApiResponse> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return { success: false, error: errorData.message || 'Logout failed' };
+            }
+
+            return { success: true, message: 'Logout successful' };
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+        }
+    }
+
+  async refreshToken(): Promise<ApiResponse<{ accessToken: string; refreshToken: string }>> {
     try {
-      console.log('🌐 Making API call to:', `${API_BASE_URL}/auth/login`);
-      
-      // Extract name from email (before @ symbol) for backend compatibility
-      const name = email.split('@')[0];
-      const requestData = { name, email, password };
-      
-      console.log('🌐 Request payload:', { name, email, passwordLength: password.length });
-      
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData)
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({refreshToken: localStorage.getItem('refreshToken')}),
       });
 
-      console.log('🌐 API Response status:', response.status);
-      console.log('🌐 API Response headers:', Object.fromEntries(response.headers.entries()));
-      
-      const data = await response.json();
-      console.log('🌐 API Response data:', data);
-      
       if (!response.ok) {
-        console.error('🌐 Login API Error:', data);
-        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Token refresh failed' };
       }
-      
-      return data;
+
+      const data = await response.json();
+      return { success: true, data, message: 'Token refreshed successfully' };
     } catch (error) {
-      console.error('🌐 Login request failed:', error);
-      throw error;
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
     }
   }
 
-  async register(userData: {
-    name: string;
-    email: string;
-    password: string;
-    role?: string;
-  }): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/users/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
-    });
+  async changePassword(): Promise<ApiResponse<{email: string; currentPassword: string; newPassword: string}>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/change-password`, {
+        method: 'put',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({email: localStorage.getItem('email'),currentPassword: localStorage.getItem('currentPassword'), newPassword: localStorage.getItem('newPassword')}),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Password change failed' };
+      }
 
-    return this.handleResponse(response);
+      const data = await response.json();
+      return { success: true, data, message: 'Password changed successfully' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+    }
   }
 
-  async refreshToken(refreshToken: string): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken })
-    });
+  // Blog API Methods
+  async getBlogs(): Promise<ApiResponse<BlogApiResponse[]>> {
+    try {
+      // console.log('Making GET request to blogs API...');
+      const token = localStorage.getItem('accessToken');
+      // console.log('Using token:', token ? 'Token exists' : 'No token found');
+      
+      const response = await fetch(`${API_BASE_URL}/blogs`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
 
-    return this.handleResponse(response);
+      // console.log('Response status:', response.status);
+      // console.log('Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Response not ok:', errorText);
+        const errorData = await response.json();
+        console.error('Error data:', errorData);
+        return { success: false, error: errorData.message || 'Failed to fetch blogs' };
+      }
+
+      const data = await response.json();
+      // console.log('Success response data:', data);
+      return { success: true, data, message: 'Blogs fetched successfully' };
+    } catch (error) {
+      console.error('API Service catch error:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error?.constructor?.name);
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+    }
   }
 
-  async logout(): Promise<ApiResponse> {
-    const refreshToken = localStorage.getItem('refreshToken');
-    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: 'GET',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ refreshToken })
-    });
+  async getBlogById(id: string): Promise<ApiResponse<BlogApiResponse>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
 
-    return this.handleResponse(response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Failed to fetch blog' };
+      }
+
+      const data = await response.json();
+      return { success: true, data, message: 'Blog fetched successfully' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+    }
   }
 
-  async changePassword(data: {
-    email: string;
-    currentPassword: string;
-    newPassword: string;
-  }): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/users/change-password`, {
-      method: 'PUT',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(data)
-    });
+  async createBlog(blogData: BlogCreateRequest): Promise<ApiResponse<BlogApiResponse>> {
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('title', blogData.title);
+      formData.append('excerpt', blogData.excerpt);
+      formData.append('description', blogData.description);
+      formData.append('author', blogData.author);
+      formData.append('publishedAt', blogData.publishedAt);
+      formData.append('status', blogData.status.toString());
+      
+      
+      // Add thumbnail file if provided
+      if (blogData.thumbnailFile) {
+        formData.append('thumbnail', blogData.thumbnailFile);
+      }
 
-    return this.handleResponse(response);
+      // Add content blocks data
+      if (blogData.contentBlocks && blogData.contentBlocks.length > 0) {
+        // Send content blocks as JSON string
+        const contentBlocksData = blogData.contentBlocks.map(block => ({
+          id: block.id,
+          type: block.type,
+          value: block.value,
+          order: block.order
+        }));
+        formData.append('contentBlocks', JSON.stringify(contentBlocksData));
+        
+        // Add image files from content blocks
+        blogData.contentBlocks.forEach((block, index) => {
+          if (block.type === 'image' && block.file) {
+            formData.append(`contentBlockImage_${index}`, block.file);
+          }
+        });
+      }
+      const response = await fetch(`${API_BASE_URL}/blogs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          // Don't set Content-Type for FormData - browser will set it automatically
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Failed to create blog' };
+      }
+
+      const data = await response.json();
+      return { success: true, data, message: 'Blog created successfully' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+    }
   }
 
-  // Blog APIs (to be implemented in backend)
-  async getBlogs(params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    search?: string;
-  }): Promise<ApiResponse> {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.status) queryParams.append('status', params.status);
-    if (params?.search) queryParams.append('search', params.search);
+  async updateBlog(id: string, blogData: Partial<BlogCreateRequest>): Promise<ApiResponse<BlogApiResponse>> {
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      if (blogData.title) formData.append('title', blogData.title);
+      if (blogData.excerpt) formData.append('excerpt', blogData.excerpt);
+      if (blogData.description) formData.append('description', blogData.description);
+      if (blogData.author) formData.append('author', blogData.author);
+      if (blogData.publishedAt) formData.append('publishedAt', blogData.publishedAt);
+      if (blogData.status !== undefined) formData.append('status', blogData.status.toString());
+      
+      // Add thumbnail file if provided
+      if (blogData.thumbnailFile) {
+        formData.append('thumbnail', blogData.thumbnailFile);
+      }
 
-    const response = await fetch(`${API_BASE_URL}/blogs?${queryParams}`, {
-      headers: this.getAuthHeaders()
-    });
+      // Add content blocks data for updates
+      if (blogData.contentBlocks && blogData.contentBlocks.length > 0) {
+        const contentBlocksData = blogData.contentBlocks.map(block => ({
+          id: block.id,
+          type: block.type,
+          value: block.value,
+          order: block.order
+        }));
+        formData.append('contentBlocks', JSON.stringify(contentBlocksData));
+        
+        // Add image files from content blocks
+        blogData.contentBlocks.forEach((block, index) => {
+          if (block.type === 'image' && block.file) {
+            formData.append(`contentBlockImage_${index}`, block.file);
+          }
+        });
+      }
+      const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: formData,
+      });
 
-    return this.handleResponse(response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Failed to update blog' };
+      }
+
+      const data = await response.json();
+      return { success: true, data, message: 'Blog updated successfully' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+    }
   }
 
-  async getBlogById(id: string): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
-      headers: this.getAuthHeaders()
-    });
+  async updateBlogStatus(id: string, status: boolean): Promise<ApiResponse<BlogApiResponse>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/blogs/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({ status }),
+      });
 
-    return this.handleResponse(response);
-  }
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Failed to update blog status' };
+      }
 
-  async createBlog(blogData: FormData): Promise<ApiResponse> {
-    const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/blogs`, {
-      method: 'POST',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: blogData
-    });
-
-    return this.handleResponse(response);
-  }
-
-  async updateBlog(id: string, blogData: FormData): Promise<ApiResponse> {
-    const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
-      method: 'PUT',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: blogData
-    });
-
-    return this.handleResponse(response);
+      const data = await response.json();
+      return { success: true, data, message: 'Blog status updated successfully' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+    }
   }
 
   async deleteBlog(id: string): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
-      method: 'DELETE',
-      headers: this.getAuthHeaders()
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
 
-    return this.handleResponse(response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Failed to delete blog' };
+      }
+
+      return { success: true, message: 'Blog deleted successfully' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+    }
   }
 
-  async updateBlogStatus(id: string, status: string): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/blogs/${id}/status`, {
-      method: 'PATCH',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ status })
-    });
+  // User Profile Methods
+  async getUserProfile(): Promise<ApiResponse<User>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/profile`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
 
-    return this.handleResponse(response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Failed to fetch profile' };
+      }
+
+      const data = await response.json();
+      return { success: true, data, message: 'Profile fetched successfully' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+    }
   }
 
-  // Video APIs (to be implemented in backend)
-  async getVideos(params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    search?: string;
-  }): Promise<ApiResponse> {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.status) queryParams.append('status', params.status);
-    if (params?.search) queryParams.append('search', params.search);
+  async updateUserProfile(profileData: Partial<User>): Promise<ApiResponse<User>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify(profileData),
+      });
 
-    const response = await fetch(`${API_BASE_URL}/videos?${queryParams}`, {
-      headers: this.getAuthHeaders()
-    });
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Failed to update profile' };
+      }
 
-    return this.handleResponse(response);
-  }
-
-  async getVideoById(id: string): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/videos/${id}`, {
-      headers: this.getAuthHeaders()
-    });
-
-    return this.handleResponse(response);
-  }
-
-  async createVideo(videoData: FormData): Promise<ApiResponse> {
-    const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/videos`, {
-      method: 'POST',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: videoData
-    });
-
-    return this.handleResponse(response);
-  }
-
-  async updateVideo(id: string, videoData: FormData): Promise<ApiResponse> {
-    const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/videos/${id}`, {
-      method: 'PUT',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: videoData
-    });
-
-    return this.handleResponse(response);
-  }
-
-  async deleteVideo(id: string): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/videos/${id}`, {
-      method: 'DELETE',
-      headers: this.getAuthHeaders()
-    });
-
-    return this.handleResponse(response);
-  }
-
-  async updateVideoStatus(id: string, status: string): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/videos/${id}/status`, {
-      method: 'PATCH',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ status })
-    });
-
-    return this.handleResponse(response);
-  }
-
-  // Dashboard APIs
-  async getDashboardStats(): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
-      headers: this.getAuthHeaders()
-    });
-
-    return this.handleResponse(response);
-  }
-
-  // File Upload APIs
-  async uploadImage(file: File): Promise<ApiResponse> {
-    const formData = new FormData();
-    formData.append('image', file);
-
-    const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/upload/image`, {
-      method: 'POST',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: formData
-    });
-
-    return this.handleResponse(response);
-  }
-
-  async uploadVideo(file: File): Promise<ApiResponse> {
-    const formData = new FormData();
-    formData.append('video', file);
-
-    const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/upload/video`, {
-      method: 'POST',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: formData
-    });
-
-    return this.handleResponse(response);
-  }
-
-  // Search API
-  async search(query: string, type?: string): Promise<ApiResponse> {
-    const queryParams = new URLSearchParams();
-    queryParams.append('q', query);
-    if (type) queryParams.append('type', type);
-
-    const response = await fetch(`${API_BASE_URL}/search?${queryParams}`, {
-      headers: this.getAuthHeaders()
-    });
-
-    return this.handleResponse(response);
+      const data = await response.json();
+      return { success: true, data, message: 'Profile updated successfully' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
+    }
   }
 }
+
 
 export const apiService = new ApiService();
 export default apiService;

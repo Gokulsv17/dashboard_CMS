@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify, Undo, Redo } from 'lucide-react';
-import { getBlogById, updateBlog } from '../../data/mockData';
+import { apiService } from '../../services/api';
 import { Blog } from '../../types';
 
 const EditBlogPage: React.FC = () => {
@@ -20,25 +20,54 @@ const EditBlogPage: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (id) {
-      const foundBlog = getBlogById(id);
-      if (foundBlog) {
-        setBlog(foundBlog);
+      loadBlog(id);
+    }
+  }, [id, navigate]);
+
+  const loadBlog = async (blogId: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await apiService.getBlogById(blogId);
+      if (response.success && response.data) {
+        const apiBlogs = response.data;
+        const transformedBlog: Blog = {
+          id: apiBlogs._id,
+          title: apiBlogs.title,
+          excerpt: apiBlogs.excerpt,
+          description: apiBlogs.description,
+          author: apiBlogs.author,
+          authorAvatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+          publishedAt: apiBlogs.publishedAt,
+          status: apiBlogs.status ? 'published' : 'draft',
+          thumbnail: apiBlogs.thumbnail,
+          readTime: Math.ceil(apiBlogs.description.split(' ').length / 200),
+          createdAt: apiBlogs.createdAt,
+          updatedAt: apiBlogs.updatedAt
+        };
+        
+        setBlog(transformedBlog);
         setBlogData({
-          title: foundBlog.title,
-          date: foundBlog.publishedAt.split('T')[0],
-          writtenBy: foundBlog.author
+          title: transformedBlog.title,
+          date: transformedBlog.publishedAt.split('T')[0],
+          writtenBy: transformedBlog.author
         });
-        setSummary(foundBlog.excerpt);
-        setDescription(foundBlog.description);
+        setSummary(transformedBlog.excerpt);
+        setDescription(transformedBlog.description);
       } else {
+        setError(response.error || 'Blog not found');
         navigate('/blogs');
       }
+    } catch (error) {
+      setError('Failed to load blog');
+      navigate('/blogs');
     }
     setLoading(false);
-  }, [id, navigate]);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -77,13 +106,15 @@ const EditBlogPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (!blogData.title || !blogData.date || !blogData.writtenBy || !summary || !description) {
-      alert('Please fill in all required fields');
+      setError('Please fill in all required fields');
       return;
     }
 
     setIsSubmitting(true);
+    setIsUploading(true);
     setUploadProgress(0);
 
     // Simulate upload progress
@@ -98,25 +129,36 @@ const EditBlogPage: React.FC = () => {
     }, 200);
 
     // Simulate upload completion
-    setTimeout(() => {
-      if (id) {
-        // Update the blog in our mock data
-        updateBlog(id, {
-          title: blogData.title,
-          excerpt: summary,
-          description: description,
-          author: blogData.writtenBy,
-          publishedAt: new Date(blogData.date).toISOString(),
-          thumbnail: file ? URL.createObjectURL(file) : blog?.thumbnail,
-          readTime: Math.ceil(description.split(' ').length / 200)
-        });
-      }
+    setTimeout(async () => {
+      try {
+        if (id) {
+          const updateData = {
+            title: blogData.title,
+            excerpt: summary,
+            description: description,
+            author: blogData.writtenBy,
+            publishedAt: new Date(blogData.date).toISOString(),
+            status: blog?.status === 'published' ? true : false,
+            thumbnailFile: file || undefined
+          };
 
-      setIsSubmitting(false);
-      setIsUploading(false);
-      
-      // Navigate back to blogs page
-      navigate('/blogs');
+          const response = await apiService.updateBlog(id, updateData);
+          
+          if (response.success) {
+            setIsSubmitting(false);
+            setIsUploading(false);
+            navigate('/blogs');
+          } else {
+            setError(response.error || 'Failed to update blog');
+            setIsSubmitting(false);
+            setIsUploading(false);
+          }
+        }
+      } catch (error) {
+        setError('Failed to update blog');
+        setIsSubmitting(false);
+        setIsUploading(false);
+      }
     }, 2000);
   };
 
@@ -228,6 +270,13 @@ const EditBlogPage: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-600">{error}</p>
+          </div>
+        )}
+
         {/* Basic Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Edit Blog Information</h2>
@@ -340,9 +389,13 @@ const EditBlogPage: React.FC = () => {
               <label className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg cursor-pointer transition duration-200">
                 <input
                   type="file"
-                  accept="image/jpeg,image/png"
+                  src={blog.thumbnail?.startsWith('http') ? blog.thumbnail : `http://localhost:5000/uploads/${blog.thumbnail?.split('/').pop() || 'default.jpg'}`}
                   onChange={handleFileSelect}
                   className="hidden"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
+                  }}
                 />
                 Browse File
               </label>

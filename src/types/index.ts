@@ -1,19 +1,25 @@
 export interface User {
-  id: string;
+  _id: string;
   email: string;
   name: string;
-  role?: string;
+  avatar?: string;
+  role: string;
+  phone?: string;
+  location?: string;
+  bio?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Blog {
   id: string;
   title: string;
   excerpt: string;
-  description: string;
+  description?: string;
   author: string;
-  authorAvatar: string;
+  authorAvatar?: string;
   publishedAt: string;
-  status: 'published' | 'draft' | 'archived';
+  status: 'published' | 'draft' | 'archived' | boolean;
   thumbnail?: string;
   readTime: number;
   createdAt?: string;
@@ -27,22 +33,18 @@ export interface Video {
   author: string;
   uploadedAt: string;
   duration: string;
-  views: number;
-  status: 'published' | 'draft' | 'processing';
   thumbnail?: string;
-  videoUrl?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  thumbnailFile?: File;
+  status: 'published' | 'draft' | 'processing';
 }
 
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  changePassword: (email: string,currentPassword: string, newPassword: string) => Promise<boolean>;
   isLoading: boolean;
   isInitializing: boolean;
-  error: string;
 }
 
 export interface DashboardStats {

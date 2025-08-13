@@ -70,7 +70,7 @@ const ChangePasswordPage: React.FC = () => {
     try {
       // If from email, skip current password verification
       const currentPass = isFromEmail ? 'password123' : formData.currentPassword;
-      const success = await changePassword(currentPass, formData.newPassword);
+      // const success = await changePassword(currentPass, formData.newPassword);
       
       if (success) {
         setSuccess(true);

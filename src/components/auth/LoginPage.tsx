@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../../assets/images/Logo_black.svg';
@@ -8,27 +8,25 @@ const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading, error } = useAuth();
+  const [error, setError] = useState('');
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
 
     if (!email || !password) {
+      setError('Please fill in all fields');
       return;
     }
 
-    try {
-      console.log('Submitting login form...');
-      const success = await login(email, password);
-      console.log('Login result:', success);
-      
-      if (success) {
-        console.log('Redirecting to dashboard...');
-        navigate('/dashboard');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
+    // mock user
+    const success = await login(email, password);
+    if (success) {
+      navigate('/dashboard');
+    } else {
+      setError('Invalid email or password');
     }
   };
 
@@ -104,7 +102,7 @@ const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        {/* <div className="mt-8 pt-6 border-t border-gray-200">
           <div className="text-center mb-4">
             <Link
               to="/auth/forgotpassword"
@@ -113,10 +111,8 @@ const LoginPage: React.FC = () => {
               Forgot your password?
             </Link>
           </div>
-          <p className="text-center text-sm text-gray-500">
-            Use your registered email and password to login
-          </p>
-        </div>
+         
+        </div> */}
       </div>
     </div>
   );

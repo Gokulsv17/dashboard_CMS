@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import {
   Search,
   Bell,
   ChevronDown,
   LogOut,
-  User as UserIcon,
-  Settings,
+  User,
+  Lock,
   Star,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import ChangePasswordModal from '../common/ChangePasswordModal';
 
 const Header: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const getBreadcrumbs = () => {
@@ -32,6 +34,11 @@ const Header: React.FC = () => {
 
   const handleLogout = () => {
     logout();
+    setShowProfileMenu(false);
+  };
+
+  const handleChangePasswordClick = () => {
+    setShowChangePasswordModal(true);
     setShowProfileMenu(false);
   };
 
@@ -82,9 +89,14 @@ const Header: React.FC = () => {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center space-x-2 md:space-x-3 p-2 rounded-lg hover:bg-gray-100 transition duration-200"
           >
-            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-              <UserIcon className="h-5 w-5 text-blue-600" />
-            </div>
+            <img
+              src={
+                user?.avatar ||
+                'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop'
+              }
+              alt={user?.name || 'Profile'}
+              className="h-8 w-8 rounded-full object-cover"
+            />
             <ChevronDown className="h-4 w-4 text-gray-400 hidden sm:block" />
           </button>
 
@@ -96,14 +108,18 @@ const Header: React.FC = () => {
                 <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
 
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center transition duration-200">
-                <UserIcon className="w-4 h-4 mr-3" />
+              <Link 
+                to="/profile"
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center transition duration-200"
+                onClick={() => setShowProfileMenu(false)}
+              >
+                <User className="w-4 h-4 mr-3" />
                 Profile
-              </button>
+              </Link>
 
               <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center transition duration-200">
-                <Settings className="w-4 h-4 mr-3" />
-                Settings
+                <Lock className="w-4 h-4 mr-3" />
+                <span onClick={handleChangePasswordClick}>Change Password</span>
               </button>
 
               <div className="border-t border-gray-100 mt-1">
@@ -119,6 +135,12 @@ const Header: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+      />
     </header>
   );
 };

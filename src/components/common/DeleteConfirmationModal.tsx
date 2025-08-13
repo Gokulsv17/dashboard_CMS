@@ -44,7 +44,7 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200"
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-red-700 transition duration-200"
           >
             Yes
           </button>

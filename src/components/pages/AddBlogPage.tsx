@@ -1,7 +1,35 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, X, Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify, Undo, Redo } from 'lucide-react';
-import { addBlog } from '../../data/mockData';
+import { ArrowLeft, Upload, X, Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify, Underline, List, Image, Type, Layout } from 'lucide-react';
+import { apiService } from '../../services/api';
+
+interface TemplateWidget {
+  id: string;
+  type: 'header' | 'content-with-sidebar';
+  name: string;
+  preview: string;
+  fields: WidgetField[];
+}
+
+interface WidgetField {
+  id: string;
+  type: 'text' | 'textarea' | 'image' | 'rich-text' | 'list';
+  label: string;
+  placeholder?: string;
+  value: string;
+  formatting?: {
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    alignment?: 'left' | 'center' | 'right' | 'justify';
+  };
+  listItems?: string[];
+}
+
+interface SelectedTemplate {
+  templateId: string;
+  widgets: TemplateWidget[];
+}
 
 const AddBlogPage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +44,69 @@ const AddBlogPage: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  
+  // Template system states
+  const [selectedTemplate, setSelectedTemplate] = useState<SelectedTemplate | null>(null);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [activeWidget, setActiveWidget] = useState<string | null>(null);
+
+  // Available templates
+  const availableTemplates: TemplateWidget[] = [
+    {
+      id: 'header-template',
+      type: 'header',
+      name: 'Header Template',
+      preview: 'Main Heading + Sub Heading + Banner Image',
+      fields: [
+        {
+          id: 'main-heading',
+          type: 'text',
+          label: 'Main Heading',
+          placeholder: 'Enter main heading...',
+          value: '',
+          formatting: { bold: true, alignment: 'left' }
+        },
+        {
+          id: 'sub-heading',
+          type: 'text',
+          label: 'Sub Heading',
+          placeholder: 'Enter sub heading...',
+          value: '',
+          formatting: { alignment: 'left' }
+        },
+        {
+          id: 'banner-image',
+          type: 'image',
+          label: 'Banner Image',
+          value: ''
+        }
+      ]
+    },
+    {
+      id: 'content-sidebar-template',
+      type: 'content-with-sidebar',
+      name: 'Content with Sidebar Template',
+      preview: 'Left Sidebar List + Right Content Section',
+      fields: [
+        {
+          id: 'sidebar-list',
+          type: 'list',
+          label: 'Sidebar List Items',
+          value: '',
+          listItems: ['']
+        },
+        {
+          id: 'content-section',
+          type: 'rich-text',
+          label: 'Content Section',
+          placeholder: 'Enter your content here...',
+          value: '',
+          formatting: { alignment: 'left' }
+        }
+      ]
+    }
+  ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -52,15 +143,315 @@ const AddBlogPage: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Template selection handler
+  const handleTemplateSelect = (template: TemplateWidget) => {
+    const newTemplate: SelectedTemplate = {
+      templateId: template.id,
+      widgets: [{ ...template, fields: template.fields.map(field => ({ ...field })) }]
+    };
+    setSelectedTemplate(newTemplate);
+    setShowTemplateSelector(false);
+    setActiveWidget(template.id);
+  };
+
+  // Add another template widget
+  const addTemplateWidget = (templateType: TemplateWidget) => {
+    if (!selectedTemplate) return;
+    
+    const newWidget = {
+      ...templateType,
+      id: `${templateType.id}-${Date.now()}`,
+      fields: templateType.fields.map(field => ({ ...field, value: '' }))
+    };
+    
+    setSelectedTemplate({
+      ...selectedTemplate,
+      widgets: [...selectedTemplate.widgets, newWidget]
+    });
+    setActiveWidget(newWidget.id);
+  };
+
+  // Update widget field value
+  const updateWidgetField = (widgetId: string, fieldId: string, value: string) => {
+    if (!selectedTemplate) return;
+    
+    setSelectedTemplate({
+      ...selectedTemplate,
+      widgets: selectedTemplate.widgets.map(widget =>
+        widget.id === widgetId
+          ? {
+              ...widget,
+              fields: widget.fields.map(field =>
+                field.id === fieldId ? { ...field, value } : field
+              )
+            }
+          : widget
+      )
+    });
+  };
+
+  // Update widget field formatting
+  const updateWidgetFieldFormatting = (widgetId: string, fieldId: string, formatting: any) => {
+    if (!selectedTemplate) return;
+    
+    setSelectedTemplate({
+      ...selectedTemplate,
+      widgets: selectedTemplate.widgets.map(widget =>
+        widget.id === widgetId
+          ? {
+              ...widget,
+              fields: widget.fields.map(field =>
+                field.id === fieldId 
+                  ? { ...field, formatting: { ...field.formatting, ...formatting } }
+                  : field
+              )
+            }
+          : widget
+      )
+    });
+  };
+
+  // Update list items for list type fields
+  const updateListItems = (widgetId: string, fieldId: string, items: string[]) => {
+    if (!selectedTemplate) return;
+    
+    setSelectedTemplate({
+      ...selectedTemplate,
+      widgets: selectedTemplate.widgets.map(widget =>
+        widget.id === widgetId
+          ? {
+              ...widget,
+              fields: widget.fields.map(field =>
+                field.id === fieldId ? { ...field, listItems: items } : field
+              )
+            }
+          : widget
+      )
+    });
+  };
+
+  // Rich text editor toolbar
+  const RichTextToolbar = ({ widgetId, fieldId, formatting }: { widgetId: string, fieldId: string, formatting?: any }) => (
+    <div className="flex items-center space-x-2 p-2 border-b border-gray-200 bg-gray-50">
+      <button
+        type="button"
+        onClick={() => updateWidgetFieldFormatting(widgetId, fieldId, { bold: !formatting?.bold })}
+        className={`p-2 rounded transition duration-200 ${
+          formatting?.bold ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
+        }`}
+      >
+        <Bold className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => updateWidgetFieldFormatting(widgetId, fieldId, { italic: !formatting?.italic })}
+        className={`p-2 rounded transition duration-200 ${
+          formatting?.italic ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
+        }`}
+      >
+        <Italic className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => updateWidgetFieldFormatting(widgetId, fieldId, { underline: !formatting?.underline })}
+        className={`p-2 rounded transition duration-200 ${
+          formatting?.underline ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
+        }`}
+      >
+        <Underline className="w-4 h-4" />
+      </button>
+      <div className="w-px h-6 bg-gray-300 mx-2"></div>
+      <button
+        type="button"
+        onClick={() => updateWidgetFieldFormatting(widgetId, fieldId, { alignment: 'left' })}
+        className={`p-2 rounded transition duration-200 ${
+          formatting?.alignment === 'left' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
+        }`}
+      >
+        <AlignLeft className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => updateWidgetFieldFormatting(widgetId, fieldId, { alignment: 'center' })}
+        className={`p-2 rounded transition duration-200 ${
+          formatting?.alignment === 'center' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
+        }`}
+      >
+        <AlignCenter className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => updateWidgetFieldFormatting(widgetId, fieldId, { alignment: 'right' })}
+        className={`p-2 rounded transition duration-200 ${
+          formatting?.alignment === 'right' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
+        }`}
+      >
+        <AlignRight className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => updateWidgetFieldFormatting(widgetId, fieldId, { alignment: 'justify' })}
+        className={`p-2 rounded transition duration-200 ${
+          formatting?.alignment === 'justify' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
+        }`}
+      >
+        <AlignJustify className="w-4 h-4" />
+      </button>
+    </div>
+  );
+
+  // Render widget field based on type
+  const renderWidgetField = (widget: TemplateWidget, field: WidgetField) => {
+    const fieldStyle = {
+      fontWeight: field.formatting?.bold ? 'bold' : 'normal',
+      fontStyle: field.formatting?.italic ? 'italic' : 'normal',
+      textDecoration: field.formatting?.underline ? 'underline' : 'none',
+      textAlign: field.formatting?.alignment || 'left'
+    } as React.CSSProperties;
+
+    switch (field.type) {
+      case 'text':
+        return (
+          <input
+            type="text"
+            value={field.value}
+            onChange={(e) => updateWidgetField(widget.id, field.id, e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+            placeholder={field.placeholder}
+            style={fieldStyle}
+          />
+        );
+      
+      case 'textarea':
+        return (
+          <textarea
+            value={field.value}
+            onChange={(e) => updateWidgetField(widget.id, field.id, e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 min-h-[120px] resize-none"
+            placeholder={field.placeholder}
+            style={fieldStyle}
+          />
+        );
+      
+      case 'rich-text':
+        return (
+          <div className="border border-gray-300 rounded-lg overflow-hidden">
+            <RichTextToolbar widgetId={widget.id} fieldId={field.id} formatting={field.formatting} />
+            <textarea
+              value={field.value}
+              onChange={(e) => updateWidgetField(widget.id, field.id, e.target.value)}
+              className="w-full px-4 py-3 border-0 focus:ring-0 focus:outline-none min-h-[200px] resize-none"
+              placeholder={field.placeholder}
+              style={fieldStyle}
+            />
+          </div>
+        );
+      
+      case 'image':
+        return (
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-600 mb-2">Upload image for this section</p>
+            <label className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg cursor-pointer transition duration-200">
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    updateWidgetField(widget.id, field.id, file.name);
+                  }
+                }}
+                className="hidden"
+              />
+              Choose Image
+            </label>
+            {field.value && (
+              <div className="mt-2 text-sm text-gray-600">
+                Selected: {field.value}
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'list':
+        return (
+          <div className="space-y-2">
+            {field.listItems?.map((item, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={item}
+                  onChange={(e) => {
+                    const newItems = [...(field.listItems || [])];
+                    newItems[index] = e.target.value;
+                    updateListItems(widget.id, field.id, newItems);
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                  placeholder={`List item ${index + 1}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newItems = field.listItems?.filter((_, i) => i !== index) || [];
+                    updateListItems(widget.id, field.id, newItems);
+                  }}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const newItems = [...(field.listItems || []), ''];
+                updateListItems(widget.id, field.id, newItems);
+              }}
+              className="inline-flex items-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
+            >
+              <List className="w-4 h-4 mr-2" />
+              Add Item
+            </button>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (!blogData.title || !blogData.date || !blogData.writtenBy || !summary || !description) {
-      alert('Please fill in all required fields');
+      setError('Please fill in all required fields');
       return;
     }
 
+    // Console log template data
+    console.log('=== TEMPLATE DATA ===');
+    console.log('Selected Template:', selectedTemplate);
+    if (selectedTemplate) {
+      selectedTemplate.widgets.forEach((widget, widgetIndex) => {
+        console.log(`Widget ${widgetIndex + 1} (${widget.name}):`, {
+          id: widget.id,
+          type: widget.type,
+          fields: widget.fields.map(field => ({
+            id: field.id,
+            type: field.type,
+            label: field.label,
+            value: field.value,
+            formatting: field.formatting,
+            listItems: field.listItems
+          }))
+        });
+      });
+    }
+
     setIsSubmitting(true);
+    setIsUploading(true);
     setUploadProgress(0);
 
     // Simulate upload progress
@@ -75,24 +466,36 @@ const AddBlogPage: React.FC = () => {
     }, 200);
 
     // Simulate upload completion
-    setTimeout(() => {
-      // Add the blog to our mock data
-      const newBlog = addBlog({
-        title: blogData.title,
-        excerpt: summary,
-        description: description,
-        author: blogData.writtenBy,
-        publishedAt: new Date(blogData.date).toISOString(),
-        status: 'published',
-        thumbnail: file ? URL.createObjectURL(file) : 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop',
-        readTime: Math.ceil(description.split(' ').length / 200) // Estimate reading time
-      });
+    setTimeout(async () => {
+      try {
+        const blogApiData = {
+          title: blogData.title,
+          excerpt: summary,
+          description: description,
+          author: blogData.writtenBy,
+          publishedAt: new Date(blogData.date).toISOString(),
+          status: false,
+          thumbnail: '',
+          thumbnailFile: file || undefined,
+          templateData: selectedTemplate // Add template data to API call
+        };
 
-      setIsSubmitting(false);
-      setIsUploading(false);
-      
-      // Navigate back to blogs page
-      navigate('/blogs');
+        const response = await apiService.createBlog(blogApiData);
+        
+        if (response.success) {
+          setIsSubmitting(false);
+          setIsUploading(false);
+          navigate('/blogs');
+        } else {
+          setError(response.error || 'Failed to create blog');
+          setIsSubmitting(false);
+          setIsUploading(false);
+        }
+      } catch (error) {
+        setError('Failed to create blog');
+        setIsSubmitting(false);
+        setIsUploading(false);
+      }
     }, 2000);
   };
 
@@ -100,76 +503,6 @@ const AddBlogPage: React.FC = () => {
     setIsUploading(false);
     setUploadProgress(0);
   };
-
-  const EditorToolbar = ({ onAction }: { onAction: (action: string) => void }) => (
-    <div className="flex items-center space-x-2 p-3 border-b border-gray-200 bg-gray-50">
-      <button
-        type="button"
-        onClick={() => onAction('undo')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <Undo className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('redo')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <Redo className="w-4 h-4" />
-      </button>
-      <div className="w-px h-6 bg-gray-300 mx-2"></div>
-      <select className="text-sm border border-gray-300 rounded px-2 py-1">
-        <option>Paragraph</option>
-        <option>Heading 1</option>
-        <option>Heading 2</option>
-        <option>Heading 3</option>
-      </select>
-      <div className="w-px h-6 bg-gray-300 mx-2"></div>
-      <button
-        type="button"
-        onClick={() => onAction('bold')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <Bold className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('italic')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <Italic className="w-4 h-4" />
-      </button>
-      <div className="w-px h-6 bg-gray-300 mx-2"></div>
-      <button
-        type="button"
-        onClick={() => onAction('align-left')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <AlignLeft className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('align-center')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <AlignCenter className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('align-right')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <AlignRight className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onAction('align-justify')}
-        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition duration-200"
-      >
-        <AlignJustify className="w-4 h-4" />
-      </button>
-    </div>
-  );
 
   return (
     <div className="space-y-4 md:space-y-6 px-2 md:px-0">
@@ -185,6 +518,13 @@ const AddBlogPage: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-600">{error}</p>
+          </div>
+        )}
+
         {/* Basic Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Basic Information</h2>
@@ -242,12 +582,11 @@ const AddBlogPage: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-900">Features</h2>
             <p className="text-sm text-gray-600 mt-1">Summary Section</p>
           </div>
-          <EditorToolbar onAction={(action) => console.log('Summary action:', action)} />
           <div className="p-6">
             <textarea
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
-              className="w-full h-32 border-0 resize-none focus:ring-0 focus:outline-none"
+              className="w-full h-32 border border-gray-300 rounded-lg px-4 py-3 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
               placeholder="Write your blog summary here..."
             />
           </div>
@@ -258,20 +597,103 @@ const AddBlogPage: React.FC = () => {
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Description</h2>
           </div>
-          <EditorToolbar onAction={(action) => console.log('Description action:', action)} />
           <div className="p-6">
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full h-48 border-0 resize-none focus:ring-0 focus:outline-none"
+              className="w-full h-48 border border-gray-300 rounded-lg px-4 py-3 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
               placeholder="Write your detailed blog description here..."
             />
           </div>
         </div>
 
+        {/* Template Selection Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">Blog Templates</h2>
+            <p className="text-sm text-gray-600 mt-1">Select and customize templates for your blog content</p>
+          </div>
+
+          {/* Template Selector */}
+          {!selectedTemplate && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {availableTemplates.map((template) => (
+                <div
+                  key={template.id}
+                  onClick={() => handleTemplateSelect(template)}
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition duration-200"
+                >
+                  <Layout className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">{template.name}</h3>
+                  <p className="text-sm text-gray-600">{template.preview}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Selected Template Widgets */}
+          {selectedTemplate && (
+            <div className="space-y-6">
+              {selectedTemplate.widgets.map((widget, widgetIndex) => (
+                <div
+                  key={widget.id}
+                  className={`border rounded-lg p-6 transition-all duration-200 ${
+                    activeWidget === widget.id ? 'border-blue-300 shadow-sm' : 'border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Type className="w-5 h-5 text-gray-400" />
+                      <span className="text-lg font-medium text-gray-900">
+                        {widget.name} #{widgetIndex + 1}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveWidget(activeWidget === widget.id ? null : widget.id)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      {activeWidget === widget.id ? 'Collapse' : 'Edit'}
+                    </button>
+                  </div>
+
+                  {activeWidget === widget.id && (
+                    <div className="space-y-4">
+                      {widget.fields.map((field) => (
+                        <div key={field.id}>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {field.label}
+                          </label>
+                          {renderWidgetField(widget, field)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Add More Templates */}
+              <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-200">
+                <span className="text-sm font-medium text-gray-700">Add more sections:</span>
+                {availableTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => addTemplateWidget(template)}
+                    className="inline-flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition duration-200"
+                  >
+                    <Layout className="w-4 h-4 mr-2" />
+                    {template.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Upload Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Upload</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Upload Featured Image</h2>
           
           {!file ? (
             <div

@@ -5,7 +5,7 @@ import { apiService } from '../../services/api';
 
 interface TemplateWidget {
   id: string;
-  type: 'header' | 'content-with-sidebar';
+  type: 'header' | 'content-with-sidebar' | 'detailed-content';
   name: string;
   preview: string;
   fields: WidgetField[];
@@ -105,6 +105,50 @@ const AddBlogPage: React.FC = () => {
           formatting: { alignment: 'left' }
         }
       ]
+    },
+    {
+      id: 'detailed-content-template',
+      type: 'detailed-content',
+      name: 'Detailed Content Template',
+      preview: 'Main Heading + Content + Multiple Subheading Groups + Image',
+      fields: [
+        {
+          id: 'main-heading',
+          type: 'text',
+          label: 'Main Heading',
+          placeholder: 'Enter main heading...',
+          value: '',
+          formatting: { bold: true, alignment: 'left' }
+        },
+        {
+          id: 'main-content',
+          type: 'rich-text',
+          label: 'Main Content',
+          placeholder: 'Enter your main content here...',
+          value: '',
+          formatting: { alignment: 'left' }
+        },
+        {
+          id: 'subheading-groups',
+          type: 'list',
+          label: 'Subheading Groups',
+          value: '',
+          listItems: ['']
+        },
+        {
+          id: 'subheading-contents',
+          type: 'list',
+          label: 'Subheading Contents',
+          value: '',
+          listItems: ['']
+        },
+        {
+          id: 'content-image',
+          type: 'image',
+          label: 'Content Image',
+          value: ''
+        }
+      ]
     }
   ];
 
@@ -143,7 +187,6 @@ const AddBlogPage: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Template selection handler
   const handleTemplateSelect = (template: TemplateWidget) => {
     const newTemplate: SelectedTemplate = {
       templateId: template.id,
@@ -154,7 +197,6 @@ const AddBlogPage: React.FC = () => {
     setActiveWidget(template.id);
   };
 
-  // Add another template widget
   const addTemplateWidget = (templateType: TemplateWidget) => {
     if (!selectedTemplate) return;
     
@@ -171,7 +213,6 @@ const AddBlogPage: React.FC = () => {
     setActiveWidget(newWidget.id);
   };
 
-  // Update widget field value
   const updateWidgetField = (widgetId: string, fieldId: string, value: string) => {
     if (!selectedTemplate) return;
     
@@ -190,7 +231,6 @@ const AddBlogPage: React.FC = () => {
     });
   };
 
-  // Update widget field formatting
   const updateWidgetFieldFormatting = (widgetId: string, fieldId: string, formatting: any) => {
     if (!selectedTemplate) return;
     
@@ -211,7 +251,6 @@ const AddBlogPage: React.FC = () => {
     });
   };
 
-  // Update list items for list type fields
   const updateListItems = (widgetId: string, fieldId: string, items: string[]) => {
     if (!selectedTemplate) return;
     
@@ -230,7 +269,6 @@ const AddBlogPage: React.FC = () => {
     });
   };
 
-  // Rich text editor toolbar
   const RichTextToolbar = ({ widgetId, fieldId, formatting }: { widgetId: string, fieldId: string, formatting?: any }) => (
     <div className="flex items-center space-x-2 p-2 border-b border-gray-200 bg-gray-50">
       <button
@@ -300,7 +338,6 @@ const AddBlogPage: React.FC = () => {
     </div>
   );
 
-  // Render widget field based on type
   const renderWidgetField = (widget: TemplateWidget, field: WidgetField) => {
     const fieldStyle = {
       fontWeight: field.formatting?.bold ? 'bold' : 'normal',
@@ -375,6 +412,77 @@ const AddBlogPage: React.FC = () => {
         );
       
       case 'list':
+        if (widget.type === 'detailed-content' && field.id === 'subheading-groups') {
+          return (
+            <div className="space-y-4">
+              {field.listItems?.map((item, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={item}
+                      onChange={(e) => {
+                        const newItems = [...(field.listItems || [])];
+                        newItems[index] = e.target.value;
+                        updateListItems(widget.id, field.id, newItems);
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                      placeholder={`Subheading ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newItems = field.listItems?.filter((_, i) => i !== index) || [];
+                        updateListItems(widget.id, field.id, newItems);
+                        const contentField = widget.fields.find(f => f.id === 'subheading-contents');
+                        if (contentField) {
+                          const newContentItems = [...(contentField.listItems || [])];
+                          newContentItems.splice(index, 1);
+                          updateListItems(widget.id, 'subheading-contents', newContentItems);
+                        }
+                      }}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition duration-200"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  <textarea
+                    value={widget.fields.find(f => f.id === 'subheading-contents')?.listItems?.[index] || ''}
+                    onChange={(e) => {
+                      const contentField = widget.fields.find(f => f.id === 'subheading-contents');
+                      if (contentField) {
+                        const newItems = [...(contentField.listItems || [])];
+                        newItems[index] = e.target.value;
+                        updateListItems(widget.id, 'subheading-contents', newItems);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 min-h-[100px]"
+                    placeholder={`Content for subheading ${index + 1}`}
+                  />
+                </div>
+              ))}
+              
+              <button
+                type="button"
+                onClick={() => {
+                  const newItems = [...(field.listItems || []), ''];
+                  updateListItems(widget.id, field.id, newItems);
+                  const contentField = widget.fields.find(f => f.id === 'subheading-contents');
+                  if (contentField) {
+                    const newContentItems = [...(contentField.listItems || []), ''];
+                    updateListItems(widget.id, 'subheading-contents', newContentItems);
+                  }
+                }}
+                className="inline-flex items-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
+              >
+                <List className="w-4 h-4 mr-2" />
+                Add Subheading Group
+              </button>
+            </div>
+          );
+        }
+        
         return (
           <div className="space-y-2">
             {field.listItems?.map((item, index) => (
@@ -430,7 +538,6 @@ const AddBlogPage: React.FC = () => {
       return;
     }
 
-    // Console log template data
     console.log('=== TEMPLATE DATA ===');
     console.log('Selected Template:', selectedTemplate);
     if (selectedTemplate) {
@@ -454,7 +561,6 @@ const AddBlogPage: React.FC = () => {
     setIsUploading(true);
     setUploadProgress(0);
 
-    // Simulate upload progress
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
@@ -465,7 +571,6 @@ const AddBlogPage: React.FC = () => {
       });
     }, 200);
 
-    // Simulate upload completion
     setTimeout(async () => {
       try {
         const blogApiData = {
@@ -477,7 +582,7 @@ const AddBlogPage: React.FC = () => {
           status: false,
           thumbnail: '',
           thumbnailFile: file || undefined,
-          templateData: selectedTemplate // Add template data to API call
+          templateData: selectedTemplate
         };
 
         const response = await apiService.createBlog(blogApiData);
@@ -506,7 +611,6 @@ const AddBlogPage: React.FC = () => {
 
   return (
     <div className="space-y-4 md:space-y-6 px-2 md:px-0">
-      {/* Back Button */}
       <div className="flex items-center">
         <Link
           to="/blogs"
@@ -518,14 +622,12 @@ const AddBlogPage: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
-        {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-red-600">{error}</p>
           </div>
         )}
 
-        {/* Basic Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Basic Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -576,7 +678,6 @@ const AddBlogPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Features Section - Summary */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Features</h2>
@@ -592,7 +693,6 @@ const AddBlogPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Description Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Description</h2>
@@ -607,16 +707,14 @@ const AddBlogPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Template Selection Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Blog Templates</h2>
             <p className="text-sm text-gray-600 mt-1">Select and customize templates for your blog content</p>
           </div>
 
-          {/* Template Selector */}
           {!selectedTemplate && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {availableTemplates.map((template) => (
                 <div
                   key={template.id}
@@ -631,7 +729,6 @@ const AddBlogPage: React.FC = () => {
             </div>
           )}
 
-          {/* Selected Template Widgets */}
           {selectedTemplate && (
             <div className="space-y-6">
               {selectedTemplate.widgets.map((widget, widgetIndex) => (
@@ -672,7 +769,6 @@ const AddBlogPage: React.FC = () => {
                 </div>
               ))}
 
-              {/* Add More Templates */}
               <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-200">
                 <span className="text-sm font-medium text-gray-700">Add more sections:</span>
                 {availableTemplates.map((template) => (
@@ -691,7 +787,6 @@ const AddBlogPage: React.FC = () => {
           )}
         </div>
 
-        {/* Upload Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Upload Featured Image</h2>
           
@@ -748,7 +843,6 @@ const AddBlogPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Upload Progress */}
         {isUploading && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-start space-x-4">

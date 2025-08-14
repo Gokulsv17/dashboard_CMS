@@ -10,31 +10,6 @@ import Pagination from '../common/Pagination';
 
 const BlogsPage: React.FC = () => {
   
-  const getImageUrl = (thumbnail?: string) => {
-    if (!thumbnail) {
-      return 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
-    }
-    
-    // If it's a base64 string, use it directly
-    if (thumbnail.startsWith('data:image/')) {
-      return thumbnail;
-    }
-    
-    // If it's already a complete URL, use it
-    if (thumbnail.startsWith('http')) {
-      return thumbnail;
-    }
-    
-    // Fallback to default image
-    return 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
-  };
-
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const target = e.target as HTMLImageElement;
-    console.error('BlogsPage: Failed to load image:', target.src);
-    target.src = 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
-  };
-
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
@@ -456,10 +431,9 @@ const BlogsPage: React.FC = () => {
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
                 <img
-                  src={getImageUrl(blog.thumbnail)}
+                  src={blog.thumbnail || 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop'}
                   alt={blog.title}
                   className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover"
-                  onError={handleImageError}
                 />
               </div>
               <div className="flex-1 min-w-0">

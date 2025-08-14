@@ -53,7 +53,7 @@ export interface BlogCreateRequest {
   status: boolean;
   thumbnail?: string;
   thumbnailFile?: File;
-  thumbnailBase64?: string;
+  thumbnailFile?: File;
   contentBlocks?: ContentBlock[];
   templateData?: any;
   detailedContentSections?: any[];
@@ -218,33 +218,36 @@ class ApiService {
 
   async createBlog(blogData: BlogCreateRequest): Promise<ApiResponse<BlogApiResponse>> {
     try {
-      // Convert thumbnail to base64 if file is provided
-      let thumbnailBase64 = '';
+      const formData = new FormData();
+      formData.append('title', blogData.title);
+      formData.append('excerpt', blogData.excerpt);
+      formData.append('description', blogData.description);
+      formData.append('author', blogData.author);
+      formData.append('publishedAt', blogData.publishedAt);
+      formData.append('status', blogData.status.toString());
+      
       if (blogData.thumbnailFile) {
-        thumbnailBase64 = await this.convertFileToBase64(blogData.thumbnailFile);
+        formData.append('thumbnail', blogData.thumbnailFile);
       }
-
-      // Prepare JSON payload
-      const payload = {
-        title: blogData.title,
-        excerpt: blogData.excerpt,
-        description: blogData.description,
-        author: blogData.author,
-        publishedAt: blogData.publishedAt,
-        status: blogData.status,
-        thumbnail: thumbnailBase64,
-        templateData: blogData.templateData,
-        detailedContentSections: blogData.detailedContentSections,
-        subheadingGroups: blogData.subheadingGroups
-      };
+      
+      if (blogData.templateData) {
+        formData.append('templateData', JSON.stringify(blogData.templateData));
+      }
+      
+      if (blogData.detailedContentSections) {
+        formData.append('detailedContentSections', JSON.stringify(blogData.detailedContentSections));
+      }
+      
+      if (blogData.subheadingGroups) {
+        formData.append('subheadingGroups', JSON.stringify(blogData.subheadingGroups));
+      }
 
       const response = await fetch(`${API_BASE_URL}/blogs`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -261,32 +264,37 @@ class ApiService {
 
   async updateBlog(id: string, blogData: Partial<BlogCreateRequest>): Promise<ApiResponse<BlogApiResponse>> {
     try {
-      // Convert thumbnail to base64 if file is provided
-      let thumbnailBase64 = '';
+      const formData = new FormData();
+      
+      if (blogData.title) formData.append('title', blogData.title);
+      if (blogData.excerpt) formData.append('excerpt', blogData.excerpt);
+      if (blogData.description) formData.append('description', blogData.description);
+      if (blogData.author) formData.append('author', blogData.author);
+      if (blogData.publishedAt) formData.append('publishedAt', blogData.publishedAt);
+      if (blogData.status !== undefined) formData.append('status', blogData.status.toString());
+      
       if (blogData.thumbnailFile) {
-        thumbnailBase64 = await this.convertFileToBase64(blogData.thumbnailFile);
+        formData.append('thumbnail', blogData.thumbnailFile);
       }
-
-      // Prepare JSON payload
-      const payload: any = {};
-      if (blogData.title) payload.title = blogData.title;
-      if (blogData.excerpt) payload.excerpt = blogData.excerpt;
-      if (blogData.description) payload.description = blogData.description;
-      if (blogData.author) payload.author = blogData.author;
-      if (blogData.publishedAt) payload.publishedAt = blogData.publishedAt;
-      if (blogData.status !== undefined) payload.status = blogData.status;
-      if (thumbnailBase64) payload.thumbnail = thumbnailBase64;
-      if (blogData.templateData) payload.templateData = blogData.templateData;
-      if (blogData.detailedContentSections) payload.detailedContentSections = blogData.detailedContentSections;
-      if (blogData.subheadingGroups) payload.subheadingGroups = blogData.subheadingGroups;
+      
+      if (blogData.templateData) {
+        formData.append('templateData', JSON.stringify(blogData.templateData));
+      }
+      
+      if (blogData.detailedContentSections) {
+        formData.append('detailedContentSections', JSON.stringify(blogData.detailedContentSections));
+      }
+      
+      if (blogData.subheadingGroups) {
+        formData.append('subheadingGroups', JSON.stringify(blogData.subheadingGroups));
+      }
 
       const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -391,20 +399,6 @@ class ApiService {
     }
   }
 
-  // Helper method to convert file to base64
-  private async convertFileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result);
-      };
-      reader.onerror = () => {
-        reject(new Error('Failed to convert file to base64'));
-      };
-      reader.readAsDataURL(file);
-    });
-  }
 }
 
 

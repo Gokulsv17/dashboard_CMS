@@ -41,34 +41,6 @@ const DashboardPage: React.FC = () => {
     loadBlogs();
   }, []);
 
-  const loadBlogs = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      console.log("Dashboard: Making GET request to blogs API...");
-      const response = await apiService.getBlogs();
-      console.log("Dashboard Blogs response:", response);
-
-      if (response.success && response.data) {
-        console.log("Dashboard Blogs data:", response.data);
-
-        // Transform API data to match our Blog interface
-        const transformedBlogs: Blog[] = response.data.map((blog) => ({
-          id: blog._id,
-          title: blog.title || "Untitled",
-          excerpt: blog.excerpt || "No excerpt available",
-          description: blog.description || "No description available",
-          author: blog.author || "Unknown Author",
-          authorAvatar: "https://randomuser.me/api/portraits/men/1.jpg",
-          publishedAt: blog.publishedAt || new Date().toISOString(),
-          status: blog.status ? "published" : "draft",
-          thumbnail: blog.thumbnail,
-          readTime: blog.description
-            ? Math.ceil((blog.description || "").split(" ").length / 200)
-            : 1,
-          createdAt: blog.createdAt,
-          updatedAt: blog.updatedAt,
-        }));
 
         console.log("Dashboard Transformed blogs:", transformedBlogs);
         setBlogs(transformedBlogs);
@@ -211,10 +183,9 @@ const DashboardPage: React.FC = () => {
                   className="w-full max-w-[243px] h-auto bg-white border border-gray-100 rounded-xl shadow-sm p-3 flex flex-col mx-auto cursor-pointer hover:shadow-md hover:border-blue-200 transition-all duration-200"
                 >
                   <img
-                    src={getImageUrl(blog.thumbnail)}
+                    src={blog.thumbnail || "https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop"}
                     alt={blog.title}
                     className="w-full h-[100px] object-cover rounded-lg"
-                    onError={handleImageError}
                   />
                   <h4 className="mt-3 text-[16px] font-semibold text-gray-800 leading-tight line-clamp-2">
                     {blog.title}

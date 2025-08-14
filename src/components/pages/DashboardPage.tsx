@@ -41,6 +41,18 @@ const DashboardPage: React.FC = () => {
     loadBlogs();
   }, []);
 
+  const loadBlogs = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = await apiService.getBlogs();
+      
+      if (response.success && response.data) {
+        const transformedBlogs = response.data.map((blog: any) => ({
+          ...blog,
+          thumbnail: getImageUrl(blog.thumbnail),
+          authorAvatar: blog.authorAvatar || "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop",
+        }));
 
         console.log("Dashboard Transformed blogs:", transformedBlogs);
         setBlogs(transformedBlogs);

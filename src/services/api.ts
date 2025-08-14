@@ -51,8 +51,9 @@ export interface BlogCreateRequest {
   author: string;
   publishedAt: string;
   status: boolean;
-  thumbnail: string;
+  thumbnail?: string;
   thumbnailFile?: File;
+  thumbnailBase64?: string;
   contentBlocks?: ContentBlock[];
   templateData?: any;
   detailedContentSections?: any[];
@@ -217,46 +218,33 @@ class ApiService {
 
   async createBlog(blogData: BlogCreateRequest): Promise<ApiResponse<BlogApiResponse>> {
     try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('title', blogData.title);
-      formData.append('excerpt', blogData.excerpt);
-      formData.append('description', blogData.description);
-      formData.append('author', blogData.author);
-      formData.append('publishedAt', blogData.publishedAt);
-      formData.append('status', blogData.status.toString());
-      
-      
-      // Add thumbnail file if provided
+      // Convert thumbnail to base64 if file is provided
+      let thumbnailBase64 = '';
       if (blogData.thumbnailFile) {
-        formData.append('thumbnail', blogData.thumbnailFile);
+        thumbnailBase64 = await this.convertFileToBase64(blogData.thumbnailFile);
       }
 
-      // Add content blocks data
-      if (blogData.contentBlocks && blogData.contentBlocks.length > 0) {
-        // Send content blocks as JSON string
-        const contentBlocksData = blogData.contentBlocks.map(block => ({
-          id: block.id,
-          type: block.type,
-          value: block.value,
-          order: block.order
-        }));
-        formData.append('contentBlocks', JSON.stringify(contentBlocksData));
-        
-        // Add image files from content blocks
-        blogData.contentBlocks.forEach((block, index) => {
-          if (block.type === 'image' && block.file) {
-            formData.append(`contentBlockImage_${index}`, block.file);
-          }
-        });
-      }
+      // Prepare JSON payload
+      const payload = {
+        title: blogData.title,
+        excerpt: blogData.excerpt,
+        description: blogData.description,
+        author: blogData.author,
+        publishedAt: blogData.publishedAt,
+        status: blogData.status,
+        thumbnail: thumbnailBase64,
+        templateData: blogData.templateData,
+        detailedContentSections: blogData.detailedContentSections,
+        subheadingGroups: blogData.subheadingGroups
+      };
+
       const response = await fetch(`${API_BASE_URL}/blogs`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          // Don't set Content-Type for FormData - browser will set it automatically
         },
-        body: formData,
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -273,43 +261,32 @@ class ApiService {
 
   async updateBlog(id: string, blogData: Partial<BlogCreateRequest>): Promise<ApiResponse<BlogApiResponse>> {
     try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      if (blogData.title) formData.append('title', blogData.title);
-      if (blogData.excerpt) formData.append('excerpt', blogData.excerpt);
-      if (blogData.description) formData.append('description', blogData.description);
-      if (blogData.author) formData.append('author', blogData.author);
-      if (blogData.publishedAt) formData.append('publishedAt', blogData.publishedAt);
-      if (blogData.status !== undefined) formData.append('status', blogData.status.toString());
-      
-      // Add thumbnail file if provided
+      // Convert thumbnail to base64 if file is provided
+      let thumbnailBase64 = '';
       if (blogData.thumbnailFile) {
-        formData.append('thumbnail', blogData.thumbnailFile);
+        thumbnailBase64 = await this.convertFileToBase64(blogData.thumbnailFile);
       }
 
-      // Add content blocks data for updates
-      if (blogData.contentBlocks && blogData.contentBlocks.length > 0) {
-        const contentBlocksData = blogData.contentBlocks.map(block => ({
-          id: block.id,
-          type: block.type,
-          value: block.value,
-          order: block.order
-        }));
-        formData.append('contentBlocks', JSON.stringify(contentBlocksData));
-        
-        // Add image files from content blocks
-        blogData.contentBlocks.forEach((block, index) => {
-          if (block.type === 'image' && block.file) {
-            formData.append(`contentBlockImage_${index}`, block.file);
-          }
-        });
-      }
+      // Prepare JSON payload
+      const payload: any = {};
+      if (blogData.title) payload.title = blogData.title;
+      if (blogData.excerpt) payload.excerpt = blogData.excerpt;
+      if (blogData.description) payload.description = blogData.description;
+      if (blogData.author) payload.author = blogData.author;
+      if (blogData.publishedAt) payload.publishedAt = blogData.publishedAt;
+      if (blogData.status !== undefined) payload.status = blogData.status;
+      if (thumbnailBase64) payload.thumbnail = thumbnailBase64;
+      if (blogData.templateData) payload.templateData = blogData.templateData;
+      if (blogData.detailedContentSections) payload.detailedContentSections = blogData.detailedContentSections;
+      if (blogData.subheadingGroups) payload.subheadingGroups = blogData.subheadingGroups;
+
       const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
         method: 'PUT',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
-        body: formData,
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -412,6 +389,21 @@ class ApiService {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
     }
+  }
+
+  // Helper method to convert file to base64
+  private async convertFileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result);
+      };
+      reader.onerror = () => {
+        reject(new Error('Failed to convert file to base64'));
+      };
+      reader.readAsDataURL(file);
+    });
   }
 }
 

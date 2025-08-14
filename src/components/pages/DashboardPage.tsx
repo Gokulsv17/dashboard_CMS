@@ -89,19 +89,18 @@ const DashboardPage: React.FC = () => {
       return "https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop";
     }
 
+    // If it's a base64 string, use it directly
+    if (thumbnail.startsWith("data:image/")) {
+      return thumbnail;
+    }
+
     // If it's already a complete URL, use it
     if (thumbnail.startsWith("http")) {
       return thumbnail;
     }
 
-    // Extract filename from full path (handles both Windows \ and Unix / separators)
-    const filename =
-      thumbnail.includes("\\") || thumbnail.includes("/")
-        ? thumbnail.split(/[\\\/]/).pop()
-        : thumbnail;
-
-    // Construct the URL
-    return `http://localhost:5000/uploads/${filename}`;
+    // Fallback to default image
+    return "https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop";
   };
 
   // Handle image load errors

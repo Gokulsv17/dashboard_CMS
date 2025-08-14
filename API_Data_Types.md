@@ -23,7 +23,7 @@ interface Blog {
   authorAvatar: string;
   publishedAt: string;
   status: 'published' | 'draft' | 'archived';
-  thumbnail?: string;
+  thumbnail?: string; // Base64 encoded image data (data:image/jpeg;base64,...)
   readTime: number;
   createdAt: string;
   updatedAt: string;
@@ -142,6 +142,7 @@ interface FileUploadResponse {
   size: number;
   mimeType: string;
   duration?: string; // For video files
+  base64Data?: string; // Base64 encoded file data
 }
 ```
 
@@ -189,12 +190,13 @@ Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
-For file uploads:
+For file uploads (if using multipart/form-data):
 ```
 Authorization: Bearer <token>
 Content-Type: multipart/form-data
 ```
 
+**Note**: Thumbnail images are now handled as base64 encoded strings in JSON payloads instead of multipart file uploads for better database storage and retrieval.
 ## Query Parameters
 
 ### Pagination

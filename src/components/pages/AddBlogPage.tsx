@@ -55,6 +55,7 @@ const AddBlogPage: React.FC = () => {
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -181,7 +182,29 @@ const AddBlogPage: React.FC = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      // Validate file type
+      if (!selectedFile.type.startsWith('image/')) {
+        setError('Please select a valid image file (JPEG, PNG, WebP)');
+        return;
+      }
+      
+      // Validate file size (5MB limit)
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        return;
+      }
+      
       setFile(selectedFile);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(selectedFile);
+      
+      // Clear any previous errors
+      setError('');
     }
   };
 
@@ -192,8 +215,26 @@ const AddBlogPage: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
+    if (droppedFile && droppedFile.type.startsWith('image/')) {
+      // Validate file size (5MB limit)
+      if (droppedFile.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        return;
+      }
+      
       setFile(droppedFile);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(droppedFile);
+      
+      // Clear any previous errors
+      setError('');
+    } else {
+      setError('Please drop a valid image file (JPEG, PNG, WebP)');
     }
   };
 
@@ -745,7 +786,6 @@ const AddBlogPage: React.FC = () => {
           author: blogData.writtenBy,
           publishedAt: new Date(blogData.date).toISOString(),
           status: false,
-          thumbnail: '',
           thumbnailFile: file || undefined,
           templateData: selectedTemplate,
           detailedContentSections: detailedContentSections,
@@ -1047,11 +1087,11 @@ const AddBlogPage: React.FC = () => {
             >
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-lg text-gray-600 mb-2">Choose a file or drag & drop it here</p>
-              <p className="text-sm text-gray-500 mb-6">JPEG, PNG formats, up to 5MB</p>
+              <p className="text-sm text-gray-500 mb-6">JPEG, PNG, WebP formats, up to 5MB</p>
               <label className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg cursor-pointer transition duration-200">
                 <input
                   type="file"
-                  accept="image/jpeg,image/png"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
@@ -1059,18 +1099,47 @@ const AddBlogPage: React.FC = () => {
               </label>
             </div>
           ) : (
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-900">{file.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setFile(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+            <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="relative">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFile(null);
+                      setImagePreview(null);
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition duration-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              
+              {/* File Info */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-gray-900">{file.name}</span>
+                  <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                </div>
+                {!imagePreview && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFile(null);
+                      setImagePreview(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-              <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
             </div>
           )}
 

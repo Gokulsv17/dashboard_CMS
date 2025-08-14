@@ -11,25 +11,27 @@ import Pagination from '../common/Pagination';
 const BlogsPage: React.FC = () => {
   
   const getImageUrl = (thumbnail?: string) => {
-    if (!thumbnail) return 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
+    if (!thumbnail) {
+      return 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
+    }
+    
+    // If it's a base64 string, use it directly
+    if (thumbnail.startsWith('data:image/')) {
+      return thumbnail;
+    }
     
     // If it's already a complete URL, use it
     if (thumbnail.startsWith('http')) {
       return thumbnail;
     }
     
-    // If it's a full file path, extract just the filename
-    const filename = thumbnail.includes('\\') || thumbnail.includes('/') 
-      ? thumbnail.split(/[\\\/]/).pop() 
-      : thumbnail;
-    
-    // Construct the URL
-    return `http://localhost:5000/uploads/${filename}`;
+    // Fallback to default image
+    return 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const target = e.target as HTMLImageElement;
-    console.error('Failed to load image:', target.src);
+    console.error('BlogsPage: Failed to load image:', target.src);
     target.src = 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
   };
 

@@ -68,11 +68,14 @@ const BlogPreviewModal: React.FC<BlogPreviewModalProps> = ({
           <div className="p-6 border-b border-gray-200">
             {blog.thumbnail && (
               <img
-                src={blog.thumbnail.startsWith('http') ? blog.thumbnail : `http://localhost:5000/uploads/${blog.thumbnail.split('/').pop()}`}
+                src={blog.thumbnail.startsWith('data:image/') || blog.thumbnail.startsWith('http') 
+                  ? blog.thumbnail 
+                  : 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop'}
                 alt={blog.title}
                 className="w-full h-64 object-cover rounded-lg mb-6"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
+                  console.error('BlogPreviewModal: Failed to load image:', target.src);
                   target.src = 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&fit=crop';
                 }}
               />
